@@ -120,7 +120,7 @@ parsing the DBF file when inputting Shapefile data
 
 ### Install
 
-edit SuasMapServer3/config.php and change the following parameters with yours
+edit SuasMapServer4/config.php and change the following parameters with yours
 
 ```php
 $dbserver 	= 'localhost';
@@ -132,8 +132,9 @@ $baseserverhost 	= 'http://localhost/suas/';
 ```
 
 
-run http://localhost/SuasMapServer3/install.php and following the wizard.
+run http://localhost/SuasMapServer4/install/install.php and following the wizard.
 
+Some test data such as shape file, svg are available under SuasMapServer4/test_data
 
 
 ### Tutorial
