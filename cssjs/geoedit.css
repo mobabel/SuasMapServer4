@@ -1,0 +1,167 @@
+#hand_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_move_u.png);
+}
+#hand_b.selected {
+  background-image: url(../img/B_move_d.png);
+}
+
+#nextshape_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_nextshape_u.png);
+}
+#nextshape_b.selected {
+  background-image: url(../img/B_nextshape_d.png);
+}
+
+#point_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_point_u.png);
+}
+#point_b.selected {
+  background-image: url(../img/B_point_d.png);
+}
+
+#linestring_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_linestring_u.png);
+}
+#linestring_b.selected {
+  background-image: url(../img/B_linestring_d.png);
+}
+
+#polygon_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_polygon_u.png);
+}
+#polygon_b.selected {
+  background-image: url(../img/B_polygon_d.png);
+}
+
+#circle_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_circle_u.png);
+}
+#circle_b.selected {
+  background-image: url(../img/B_circle_d.png);
+}
+#rectangle_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_rectangle_u.png);
+}
+#rectangle_b.selected {
+  background-image: url(../img/B_rectangle_d.png);
+}
+
+#circlef_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_circlef_u.png);
+}
+#circlef_b.selected {
+  background-image: url(../img/B_circlef_d.png);
+}
+#rectanglef_b {
+  width:31px;
+  height:31px;
+  background-image: url(../img/B_rectanglef_u.png);
+}
+#rectanglef_b.selected {
+  background-image: url(../img/B_rectanglef_d.png);
+}
+/**
+	'c:default',
+	'c:crosshair',
+	'c:e-resize',
+	'c:hand',
+	'c:help',
+	'c:move',
+	'c:n-resize',
+	'c:ne-resize',
+	'c:nw-resize',
+	'c:s-resize',
+	'c:se-resize',
+	'c:sw-resize',
+	'c:text',
+	'c:w-resize',
+	'c:wait'
+*/
+.tooltab {
+	height: 35px; 
+	padding: 1px;
+	border: 1px solid #ccc;
+	/*lower level than menu bar*/
+	z-index: 5;
+	background: url(../img/B_dragbaru.png) repeat-y left;
+	padding-left:16px; 
+	cursor: move;
+}
+.tooltab:hover { 
+	height: 35px; 
+	padding: 1px;
+	border: 1px solid #ccc;
+	/*lower level than menu bar*/
+	z-index: 5;
+	background: url(../img/B_dragbar.png) repeat-y left;
+	padding-left:16px; 
+	cursor: move;
+}
+
+.tooltab_v {
+	height: 10px; 
+	min-width: 20em;
+	padding: 0px;
+	border: 1px solid #ccc;
+	/*lower level than menu bar*/
+	z-index: 5;
+	background: url(../img/bg-bar-white.png) repeat-x top;
+	cursor: move;
+	font-size: 10px;
+}
+
+.tooltab_float {
+	min-width: 20em;
+	min-hight: 50em;
+	border: 1px solid #ccc;
+	background-color:white;
+	font-size:10px !important;
+	position:absolute;
+	top:20px;
+	/*right:100px;*/
+	text-align: left;
+	align: left;
+}
+
+.tooltabcontent {
+	cursor:hand;
+	cursor:pointer;
+}
+.tooltab-status-label {
+	font-size: 10px;
+}
+
+.tooltab-status-item {
+	background-color:#DFEDF7;
+	font-size: 10px;
+}
+
+.panel-layer {
+	font-family:Verdana !important;
+	font-size:10px !important;
+	width:200px;
+	float:left;
+	background:white;
+	height: 450px;
+	border: 1px solid gray;
+	padding:5px 0;
+	overflow:auto;
+	text-align: left;
+	align: left;
+}

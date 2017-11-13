@@ -1,0 +1,1539 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" media="screen" href="js/main.css" />
+<script type="text/javascript" src="js/protoculous-packer.js"></script>
+<script type="text/javascript" src="js/lib/scriptaculous_tabs.js"></script>
+<script type="text/javascript" src="js/string.prototype.js"></script>
+<script type="text/javascript" src="js/commonfunction.js"></script>
+<script type="text/javascript">
+window.onload=function(){
+  var a = parent.right_frame.document.getElementById("loading");
+  //a.parentNode.removeChild(a);
+  a.style.display="none";
+}
+//globals
+//doOnload(checkBrowserClient);
+
+/**
+* browser client type:
+* 0: ie, ie6, ie7
+* 1: Mozilla/Gecko(include firefox)
+* 2: opera
+* 3: Safari, Safari2, Safari3
+*/
+var typeIe = 0;
+var typeFF = 1;
+var typeOpera = 2;
+var typeSafari = 3;
+var clientType = typeIe;
+
+var proxyURL = "proxy/proxy.php?url=";
+
+var isIE = false;
+/*var serverList = [
+                  "http://www.gis-news.de/wms/getmapcap.php?",
+		  "http://localhost/suas/wms/getmapcap.php?",
+                  "http://onearth.jpl.nasa.gov/wms.cgi?",
+                  "http://terraservice.net/ogcmap.ashx?"
+	         ];
+*/
+
+// httprequest
+var req = false;; // for prototype
+var xmlhttp = false;
+
+// the xml dom document
+var xmldoc = null;
+var strLogMessage = "<br>";
+var strLogErrorMessage = "";
+var blnhideDebugMessage = true;
+var blnhideDebugErrorMessage = true;
+
+// All lists are Indexed with the layer in the original xml
+var nodelistLayer = [];     // elements
+var layerStrList= [];        // strings
+var layerSelIndexList = [];
+var srsStrList = [];
+var bboxStrList = [];
+var formatStrList = [];
+
+// user selections
+var srsSel = -1;
+var prefix = "";
+var layerSelStr = "";
+var singleSelLargeScale = false;
+var booleanDebug = true;
+
+// getmap request parameters
+var urlGetmap = "";
+var urlGetmapPrefix = "";
+var parasEpsg = "srsProblem";
+var parasFormat = "formatProblem";
+var parasLayers = "layersProblem";
+var parasViewBox = "ViewBoxProblem";
+var parasBbox = "BBoxProblem";
+var parasWidth = 600;
+var parasHeight = 800;
+//for svg viewer
+var stndWidth = 580;
+var stndHeight = 700;
+var enablestretchmap = true;
+
+//request parameter
+var reqGetcapabilities = "GetCapabilities";
+var reqGetmap = "GetMap";
+
+
+// Too constants for svg/wms server
+var reqFowmat = "&format=image/svg+xml";
+var reqException = "&exception=application/vnd.ogc.se_inimage";//application/vnd.ogc.se_xml
+var width="&width=640"
+var height="&height=800"
+
+
+function showErrorMessage(error){
+    $('errorMessage').show();
+    $('errorMessage').update("<table class=\"tableError\"><tr><td>"+error+"</td></tr></table>");
+    hideLoading();
+
+	strLogErrorMessage +=error+"<br>";
+	//for div log
+	new Insertion.Bottom('debugErrorMessage', error+"<br>");
+}
+
+function hideErrorMessage(){
+	$('errorMessage').hide();
+    $('errorMessage').update("");
+}
+
+function showLoading(){
+	$('loadingMessage').show();
+    $('loadingMessage').update("<img src=\"images/wait.gif\"><br>Loading......");
+}
+
+function hideLoading(){
+	$('loadingMessage').hide();
+    $('loadingMessage').update("");
+}
+
+function debug(message){
+	try{
+	    if(booleanDebug){
+	        strLogMessage +=message+"<br>";
+		    //for div log
+	        new Insertion.Bottom('debugMessage', message+"<br>");
+
+			//$('debugMessageScroll').innerHTML = strLogMessage;
+	        //update the scroll content
+			//Scroller.setAll();
+			//Scroller.updateAll();
+	    }
+	}catch(e){
+		showErrorMessage("Error in debug: " + e.message);
+    }
+}
+
+function clearDebugMessage(){
+    $('debugMessage').update("<br>");
+	//$('debugMessageScroll').innerHTML = "";
+    strLogMessage = "";
+}
+
+function hideDebugMessage(){
+	try{
+	    if(blnhideDebugMessage){
+	        $('debugMessage').hide();
+			//$('debugMessageScroll').hide();
+	        $('hideorshowDebug').update("Show");
+	        blnhideDebugMessage = false;
+	    }
+	    else{
+	        $('debugMessage').show();
+			//$('debugMessageScroll').show();
+	        $('hideorshowDebug').update("Hide");
+	        blnhideDebugMessage = true;
+	    }
+    }catch(e){
+		showErrorMessage("Error in hideDebugMessage: " + e.message);
+    }
+}
+
+function clearDebugErrorMessage(){
+    $('debugErrorMessage').update("<br>");
+    strLogErrorMessage = "";
+}
+
+function hideDebugErrorMessage(){
+	try{
+	    if(blnhideDebugErrorMessage){
+	        $('debugErrorMessage').hide();
+	        $('hideorshowDebugError').update("Show");
+	        blnhideDebugErrorMessage = false;
+	    }
+	    else{
+	        $('debugErrorMessage').show();
+	        $('hideorshowDebugError').update("Hide");
+	        blnhideDebugErrorMessage = true;
+	    }
+    }catch(e){
+		showErrorMessage("Error in hideDebugErrorMessage: " + e.message);
+    }
+}
+
+
+//toggle Single Layer Large Scale
+function toggleLargeScale() {
+  singleSelLargeScale = !singleSelLargeScale;
+}
+
+//toggle debug mode
+function toggleDebugMode() {
+    if($('debugmode').checked){
+        booleanDebug = true;
+        $('debugMessage').update(strLogMessage);
+		$('debugErrorMessage').update(strLogErrorMessage);
+		//$('debugMessageScroll').innerHTML = strLogMessage;
+    }
+    else{
+        booleanDebug = false;
+		$('debugMessage').update("");
+		$('debugErrorMessage').update("");
+		//$('debugMessageScroll').innerHTML = "";
+    }
+}
+
+// Load the getCapabilities request result
+function init(serverlist) {
+	//clear all
+	$("DivHyperlinkGetmap").hide();
+	clearSRSRadioList();
+    clearImageFormatSelectList();
+    clearLayersSelectlist();
+
+    var selectedServerUrl = serverlist.options[serverlist.selectedIndex].value;
+    hideErrorMessage();
+    if (serverlist) {
+        try {
+            if (serverlist.selectedIndex > 0 && selectedServerUrl!="") {
+                debug("selectedIndex is: " +serverlist.selectedIndex);
+                debug("begin to send sendGetcapacities!");
+                //load getcapacities
+                sendGetcapacities(selectedServerUrl);
+            }
+        }
+        catch(e) {
+            var msg = (typeof e == "string") ? e : ((e.message) ? e.message : "Unknown Error");
+            showErrorMessage("Unable to get Getcapacities XML:\n" + msg);
+            return;
+        }
+    }
+}
+
+/**
+* check the brower client type, code comes from mootools
+*/
+function checkBrowserClient(){
+	var Client = {
+		Engine: {'name': 'unknown', 'version': ''},
+		Features: {}
+	};
+
+	Client.Features.xhr = !!(window.XMLHttpRequest);
+	Client.Features.xpath = !!(document.evaluate);
+
+	if (window.opera) Client.Engine.name = 'opera';
+	else if (window.ActiveXObject) Client.Engine = {'name': 'ie', 'version': (Client.Features.xhr) ? 7 : 6};
+	else if (!navigator.taintEnabled) Client.Engine = {'name': 'webkit', 'version': (Client.Features.xpath) ? 420 : 419};
+	else if (document.getBoxObjectFor != null) Client.Engine.name = 'gecko';
+	Client.Engine[Client.Engine.name] = Client.Engine[Client.Engine.name + Client.Engine.version] = true;
+
+    //Client.Engine.ie = true; //IE, whatever version
+	//Client.Engine.ie6 = true; //IE 6
+	//Client.Engine.ie7 = true; //IE 7
+	//Client.Engine.gecko = true; //Mozilla/Gecko(includes firefox)
+	//Client.Engine.opera = true; //opera
+	//Client.Engine.webkit = true; //Safari
+	//Client.Engine.webkit419 = true; //Safari2
+	//Client.Engine.webkit420 = true; //Safari3
+	if(Client.Engine.ie || Client.Engine.ie6 || Client.Engine.ie7)
+		setClientType(0);
+	else if(Client.Engine.gecko)
+		setClientType(1);
+	else if(Client.Engine.opera)
+		setClientType(2);
+	else if(Client.Engine.webkit || Client.Engine.webkit419 || Client.Engine.webkit420 )
+		setClientType(3);
+
+	showClientIcon();
+}
+
+function setClientType(clientType_){
+	clientType = clientType_;
+}
+function getClientType(){
+	return clientType;
+}
+
+/**
+* display the browser icon
+*/
+function showClientIcon(){
+	switch(getClientType()){
+		case typeIe: {
+
+			break;
+		}
+		case typeFF: {
+
+			break;
+		}
+		case typeOpera: {
+
+			break;
+		}
+		case typeSafari: {
+
+			break;
+		}
+
+	}
+}
+
+/**
+ *
+ * @access public
+ * @desc run the function when page on load
+ * @return void
+ **/
+function doOnload(functionname){
+	if (window.addEventListener)
+		window.addEventListener("load", functionname, false);
+	else if (window.attachEvent)
+		window.attachEvent("onload", functionname);
+	else if (document.getElementById)
+		window.onload=functionname;
+}
+
+/**
+* if is for mozilla/ firefox, when open local file in brower,should enablePrivilege
+* example: file:///C:/index.html
+*/
+function enablePrivilege(){
+	if (getClientType() == typeFF) {
+	    //if open local file in browser
+		if(window.location.href.substring(0,5)=='file:') {
+		    if (typeof netscape != 'undefined' && typeof netscape.security !='undefined') {
+                try {
+                    netscape.security.PrivilegeManager.enablePrivilege("UniversalBrowserRead");
+                    //netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+                }catch (e) {
+					showErrorMessage("Error in enablePrivilege: " + e.message);
+				}
+			}
+        }
+	}
+}
+
+/**
+* @params: url will be sent
+* compare the send url with browser url, if is not local file such as "file:///C:/index.html",
+* but the real domain url, if the url is not in the same domain, call the proxy php
+*/
+function getCrosssiteUrl(url){
+	var newurl;
+	var browserurl = window.location.href;
+	try{
+	    //if is local file
+		if(browserurl.substring(0,5)=='file:') {
+			newurl = url;
+			return newurl;
+		}
+		//if is real domain
+		else if(browserurl.substring(0,5)=='http:'){
+			//(http://)www.easywms.com/suasclient
+			var urlafter = browserurl.substring(7,browserurl.length);
+			var urlafter_ = url.substring(7,browserurl.length);
+			//if url is :(http://)localhost or (http://)127.0.0.1
+			if(urlafter_.indexOf('localhost')==0 || urlafter_.indexOf('127.0.0.1')==0){
+				newurl = url;
+				return newurl;
+			}//if not localhost domain
+			else{
+				//www.easywms.com
+				var urldomain = urlafter.substring(0,urlafter.indexOf('/'));
+				var urldomain_ = urlafter_.substring(0,urlafter_.indexOf('/'));
+				// not in the same domain, use proxy
+				if(urldomain!=urldomain_){
+				    debug("Ready to send cross domain request.");
+					//http://www.easywms.com/suasclient/proxy/proxy.php?url=url
+					newurl = browserurl.substring(0,browserurl.lastIndexOf('/')+1)+ proxyURL+url;
+					return newurl;
+				}else{
+					newurl = url;
+					return newurl;
+				}
+			}
+		}
+		else{
+			newurl = url;
+			return newurl;
+		}
+	}catch(e){
+		showErrorMessage("Error in getCrosssiteUrl: " + e.message);
+		return url;
+	}
+	return newurl;
+}
+
+function sendGetcapacities(selectedServerUrl){
+    var pars = 'VERSION=1.1.1&SERVICE=WMS&REQUEST='+reqGetcapabilities;
+    var parsgetmap = 'VERSION=1.1.1&SERVICE=WMS&REQUEST='+reqGetmap;
+    urlGetmapPrefix =selectedServerUrl+parsgetmap+reqException;
+    var url = selectedServerUrl+pars;
+    debug("Getcapacities URL: " + url);
+
+	enablePrivilege();
+	url = getCrosssiteUrl(url);
+	debug("Current URL: " + url);
+
+    //xmlhttp = createRequestObject();
+    //sendRequest(url);
+
+	var myAjax = new Ajax.Request(
+                url,
+                {
+					method: 'get',
+					encoding: 'UTF-8',
+					parameters: pars,
+	                asynchronous:true,
+	                //Do not use them, no problem but throw exception here
+					//onException: showErrorMessage("Exception when send Getcapacities request."),
+					//onFailure: showErrorMessage("Fail to send Getcapacities request."),
+					onLoading: showLoading(),
+					onComplete: processSendGetcapacities
+				}
+                );
+
+}
+
+/**
+    XMLHttpRequest object creating
+    IE:
+      xmlhttp_request = new ActiveXObject("Msxml2.XMLHTTP.3.0"); //3.0 or 4.0, 5.0
+      xmlhttp_request = new ActiveXObject("Msxml2.XMLHTTP");
+      xmlhttp_request = new ActiveXObject("Microsoft.XMLHTTP");
+    Other:
+      xmlhttp_request = new XMLHttpRequest();
+*/
+function createRequestObject() {
+    var xmlhttp;
+
+    //create  XMLHttpRequest for IE
+    try {
+      xmlhttp=new ActiveXObject("Msxml2.XMLHTTP");
+    }catch(e) {
+         try {
+             xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+       	 }catch(e) {
+             xmlhttp=null;
+         }
+    }
+    //create XMLRequest for other browser
+    if(!xmlhttp && typeof XMLHttpRequest != "undefined") {
+        xmlhttp=new XMLHttpRequest();
+    }
+
+    return  xmlhttp;
+
+	 /*
+     // branch for native XMLHttpRequest object
+     if (window.XMLHttpRequest) {
+        xmlhttp = new XMLHttpRequest();
+        xmlhttp.onreadystatechange = handleResponse;
+        xmlhttp.open("GET", url, true);
+        xmlhttp.setRequestHeader( "If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT" );
+        xmlhttp.send(null);
+    // branch for IE/Windows ActiveX version
+    } else if (window.ActiveXObject) {
+        isIE = true;
+        xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+        if (xmlhttp) {
+           xmlhttp.onreadystatechange = handleResponse;
+           xmlhttp.open("GET", url, true);
+           xmlhttp.send();
+       }
+   }
+*/
+}
+
+/**
+* send XMLHttpRequest
+*/
+function sendRequest(url) {
+    try{
+        /*
+        * if response has no XML mime-type header,some Mozilla browsers can not work fine
+        * if header from server is not text/xml,can modify the header this way.
+    	* xmlhttp_request = new XMLHttpRequest();
+    	* xmlhttp_request.overrideMimeType('text/xml');
+        */
+		if (getClientType() == typeFF){
+        	if (xmlhttp.overrideMimeType) {
+            	xmlhttp.overrideMimeType('text/xml');
+        	}
+        }
+        else{
+		    xmlhttp.setRequestHeader('Content-Type',  "text/xml;charset=utf-8");
+		}
+
+        //send the request
+        /**
+      	*@params: GET,POST in uppercase, otherwise some browser(Firefox) can not process the request.
+      	*@params: URL
+      	*@params: asynchronous, TRUE,JavaScript will run without the respones from server.
+      	*/
+    	xmlhttp.open("GET", url, true);
+
+        //when processing, handle the response
+        xmlhttp.onreadystatechange = handleResponse;
+
+        /*
+    	*xmlhttp_request.onreadystatechange =FunctionName;
+        *FunctionName is JavaScript function name,not FunctionName(),
+        or do it this way:
+        xmlhttp_request.onreadystatechange = function(){
+        };
+        */
+        // send data to server
+        xmlhttp.send(null);
+
+    }catch(e){
+        showErrorMessage("Error in sendRequest: " + e.message);
+    }
+  	finally{}
+}
+
+/**
+* when server has receive, handle the server status
+*/
+function handleResponse() {
+    try{
+    	 /*
+	        server status: readyState:
+	        Only when finish receiving the request
+	        readyState value:
+	          0 (????)  not initialize
+	          1 (????)  loading
+	          2 (????)  finish loading
+	          3 (???)    in interacting
+	          4 (??)      finish
+	            if (http_request.readyState == 4) {
+	            //receive full response from server
+	            } else {
+	             Http status:
+	             404: no such file found, 200 success
+	            }
+		*/
+		if (xmlhttp.readyState == 1) {
+			showLoading();
+		}
+        if ((xmlhttp.readyState == 4)){
+	        if (xmlhttp.status == 200) {
+		        /* return value
+		            (1) as Text
+		               http_request.responseText
+		            (2) as XMLDocument object
+		               http_request.responseXML
+		        */
+		        xmldoc = xmlhttp.responseXML;
+
+		        processSendGetcapacitiesNew();
+
+	        }
+	        else if(xmlhttp.status == 404){
+				showErrorMessage("Error in handleResponse: can not find the file!");
+			}
+			else {
+				showErrorMessage("Error in handleResponse: bad internet connection! code: " + xmlhttp.status);
+			}
+		}
+    }catch(e){
+      showErrorMessage("Error in handleResponse: " + e.message);
+    }
+    finally{}
+}
+
+
+// handle when finish Send Getcapacities request
+function processSendGetcapacitiesNew(){
+    hideLoading();
+    //debug("Getcapacities XML: "+xmlhttp.responseText);
+    processGetcapabilities();
+}
+
+
+// handle when finish Send Getcapacities request
+// only for prototype, not use now
+function processSendGetcapacities(originalRequest){
+    hideLoading();
+    xmldoc = null;
+    xmldoc = originalRequest.responseXML; //responseXML
+
+    //debug("Getcapacities XML: "+originalRequest.responseText);
+    processGetcapabilities();
+}
+
+var nodelistService = [];
+var nodelistCapability = [];
+var nodelistCapabilityLayer = [];
+// fill SRS radio list from selected wms server
+function processGetcapabilities() {
+  	debug("processGetcapabilities");
+
+  	try{
+  	    var root_node = xmldoc.getElementsByTagName("WMT_MS_Capabilities");
+        var nodelistLatLonBoundingBox = [];
+        var ItemFormat = [];
+
+		nodelistService = root_node[0].getElementsByTagName("Service");
+		nodelistCapability = root_node[0].getElementsByTagName("Capability");
+
+  	    nodelistCapabilityLayer = nodelistCapability[0].getElementsByTagName("Layer");
+		//nodelistLayer = nodelistCapabilityLayer[0].getElementsByTagName("Layer");
+		nodelistLayer = root_node[0].getElementsByTagName("Layer");
+        nodelistLatLonBoundingBox = nodelistCapabilityLayer[0].getElementsByTagName("LatLonBoundingBox");
+        //ItemFormat = xmldoc.getElementsByTagName("Format");
+        ItemGetMap = xmldoc.getElementsByTagName("GetMap");
+
+        var totalMinx = nodelistLatLonBoundingBox[0].getAttribute("minx");
+    	var totalMiny = nodelistLatLonBoundingBox[0].getAttribute("miny");
+   	    var totalMaxx = nodelistLatLonBoundingBox[0].getAttribute("maxx");
+    	var totalMaxy = nodelistLatLonBoundingBox[0].getAttribute("maxy");
+
+        debug("LatLonBoundingBox ("+totalMinx+","+totalMiny+","+totalMaxx+","+totalMaxy+") were found");
+  	}catch(e) {
+        var msg = (typeof e == "string") ? e : ((e.message) ? e.message : "Unknown Error");
+        showErrorMessage("Error in processGetcapabilities: " + msg);
+        return;
+   	}
+  	debug(nodelistLayer.length+" layers were found");
+	buildSRSBBOXList(nodelistLayer);
+	buildImageFormatList(ItemGetMap[0]);
+
+	buildSRSRadioList();
+    buildImageFormatSelectList();
+
+	readNodelistService();
+
+	debug("processGetcapabilities finished");
+}
+
+var serviceName;
+var serviceTitle;
+var serviceAbstract;
+function readNodelistService(){
+	try{
+		var nodelistServiceName = nodelistService[0].getElementsByTagName("Name");
+		serviceName = getElementText(nodelistServiceName, 0);
+		debug("Service Name: " + serviceName);
+		appendTableRow("Div_Info_Service", "Name",  serviceName);
+
+		var nodelistServiceTitle = nodelistService[0].getElementsByTagName("Title");
+		serviceTitle = getElementText(nodelistServiceTitle, 0);
+		debug("Service Title: " + serviceTitle);
+		appendTableRow("Div_Info_Service", "Title",  serviceTitle);
+
+		serviceAbstract = getElementText(nodelistService[0].getElementsByTagName("Abstract"), 0);
+		debug("Service Abstract: " + serviceAbstract);
+		appendTableRow("Div_Info_Service", "Abstract",  serviceAbstract);
+
+		var nodelistServiceKeywordList = nodelistService[0].getElementsByTagName("KeywordList");
+		var nodelistKeywordListKeyword = nodelistService[0].getElementsByTagName("Keyword");
+		for(i=0;i<nodelistKeywordListKeyword.length;i++){
+			var keyword = getElementText(nodelistKeywordListKeyword, i);
+			debug("KeywordList Keyword: " + keyword);
+			appendTableRow("Div_Info_Service", "Keyword",  keyword);
+		}
+
+		var nodelistServiceContactInformation = nodelistService[0].getElementsByTagName("ContactInformation");
+		var nodelistContactPersonPrimary = nodelistServiceContactInformation[0].getElementsByTagName("ContactPersonPrimary");
+
+		var nodelistContactPerson = nodelistContactPersonPrimary[0].getElementsByTagName("ContactPerson");
+		var ContactPerson = getElementText(nodelistContactPerson, 0);
+		appendTableRow("Div_Info_Service", "ContactPerson",  ContactPerson);
+
+		var nodelistContactOrganization = nodelistContactPersonPrimary[0].getElementsByTagName("ContactOrganization");
+		var ContactOrganization = getElementText(nodelistContactOrganization, 0);
+		appendTableRow("Div_Info_Service", "ContactOrganization",  ContactOrganization);
+
+		var nodelistContactPosition = nodelistServiceContactInformation[0].getElementsByTagName("ContactPosition");
+		var ContactPosition = getElementText(nodelistContactPosition, 0);
+		appendTableRow("Div_Info_Service", "ContactPosition",  ContactPosition);
+
+		var nodelistContactAddress = nodelistServiceContactInformation[0].getElementsByTagName("ContactAddress");
+
+		var nodelistAddressType = nodelistContactAddress[0].getElementsByTagName("AddressType");
+		var AddressType = getElementText(nodelistAddressType, 0);
+		appendTableRow("Div_Info_Service", "AddressType",  AddressType);
+		appendTableRow("Div_Info_Service", "Address",  getElementText(nodelistContactAddress[0].getElementsByTagName("Address"), 0));
+		appendTableRow("Div_Info_Service", "City",  getElementText(nodelistContactAddress[0].getElementsByTagName("City"), 0));
+		appendTableRow("Div_Info_Service", "StateOrProvince",  getElementText(nodelistContactAddress[0].getElementsByTagName("StateOrProvince"), 0));
+		appendTableRow("Div_Info_Service", "PostCode",  getElementText(nodelistContactAddress[0].getElementsByTagName("PostCode"), 0));
+		appendTableRow("Div_Info_Service", "Country",  getElementText(nodelistContactAddress[0].getElementsByTagName("Country"), 0));
+
+		appendTableRow("Div_Info_Service", "ContactVoiceTelephone",  getElementText(nodelistServiceContactInformation[0].getElementsByTagName("ContactVoiceTelephone"), 0));
+		appendTableRow("Div_Info_Service", "ContactFacsimileTelephone",  getElementText(nodelistServiceContactInformation[0].getElementsByTagName("ContactFacsimileTelephone"), 0));
+		appendTableRow("Div_Info_Service", "ContactElectronicMailAddress",  getElementText(nodelistServiceContactInformation[0].getElementsByTagName("ContactElectronicMailAddress"), 0));
+
+		appendTableRow("Div_Info_Service", "Fees",  getElementText(nodelistServiceContactInformation[0].getElementsByTagName("Fees"), 0));
+		appendTableRow("Div_Info_Service", "AccessConstraints",  getElementText(nodelistServiceContactInformation[0].getElementsByTagName("AccessConstraints"), 0));
+
+	}catch(e) {
+        showErrorMessage("Error in readNodelistService: " + e.message);
+   	}
+
+}
+
+function readNodelistCapability(){
+	try{
+
+	}catch(e) {
+        showErrorMessage("Error in readNodelistCapability: " + e.message);
+   	}
+}
+
+function readNodelistRequest(){
+	try{
+
+	}catch(e) {
+        showErrorMessage("Error in readNodelistRequest: " + e.message);
+   	}
+}
+
+function readNodelistException(){
+	try{
+
+	}catch(e) {
+        showErrorMessage("Error in readNodelistException: " + e.message);
+   	}
+}
+
+function readNodelistLayer(){
+	try{
+
+	}catch(e) {
+        showErrorMessage("Error in readNodelistLayer: " + e.message);
+   	}
+}
+
+
+function appendTableRow(tabledivname, name, value){
+	try{
+		if(!value.empty()){
+			//not compatible for IE6
+			//var tr = document.createElement('tr');
+            //var td = document.createElement('td');
+			//var text = document.createTextNode(value);
+            //td.appendChild(text);
+			//tr.appendChild(td);
+			//$(tabledivname).appendChild(tr);
+
+			//new Insertion.Bottom(tabledivname, "<tr><td class='name'>"+name+"</td>"+"<td class='value'>"+value+"</td><tr>");
+			new Insertion.Bottom(tabledivname, "<font class='name'>"+name+"</font>"+"&nbsp;"+"<font class='value'>"+value+"</font><br>");
+		}
+	}catch(e) {
+        showErrorMessage("Error in appendTableRow: " + e.message);
+   	}
+}
+
+/**
+* build the SRS and BBox data array
+*/
+function buildSRSBBOXList(prtElmt) {
+  	debug("buildSRSBBOXTextLists");
+
+  	var srsTexts = "";
+  	var elmtList = prtElmt[0].getElementsByTagName("BoundingBox");
+
+  	debug(elmtList.length+" BoundingBox in Layer");
+
+  	for (var i=0; i<elmtList.length; i++){
+    	var stxt = elmtList[i].getAttribute("SRS");
+    	var btxt = elmtList[i].getAttribute("minx") + ",";
+    	btxt += elmtList[i].getAttribute("miny") + ",";
+   		btxt += elmtList[i].getAttribute("maxx") + ",";
+    	btxt += elmtList[i].getAttribute("maxy");
+
+        //if there are same srs, stop
+    	if (srsTexts.indexOf(stxt) != -1) break;
+
+    	debug("srsStrList["+i+"]:"  + stxt);
+    	debug("bboxStrList["+i+"]:"  + btxt);
+
+    	srsTexts += stxt + ",";
+    	srsStrList[i] = stxt;
+    	bboxStrList[i] = btxt;
+  	}
+
+  	debug("buildSRSBBOXTextLists finished");
+}
+
+/**
+* build the radio list for SRS
+*/
+function buildSRSRadioList(){
+	var div = $("DivSelectlistSRSs");
+	var str = "";
+	// loop to add all radio buttons
+	for (var i=0; i<srsStrList.length; i++) {
+	  	str += "<input type='radio' name= 'RadiogroupSRSs' value='" + i+ "' onclick='handleSelectSRS(this.value)'>" + srsStrList[i] + "</input><br/>";
+	}
+	div.update(str);
+    div.show();
+	debug("Build SRS Radio List finished");
+}
+
+/**
+* clear SRS select list
+*/
+function clearSRSRadioList() {
+    debug("Clear SRS Radio List");
+    var div = $("DivSelectlistSRSs");
+    if (div) {
+        removeChildrenFromNode(div);
+    }
+    div.hide();
+}
+
+function buildImageFormatList(prtElmt) {
+  	debug("buildImageFormatList");
+
+  	var srsTexts = "";
+  	var elmtFormat = prtElmt.getElementsByTagName("Format");
+
+  	debug(elmtFormat.length+" Formats was found");
+  	for (var i=0; i<elmtFormat.length; i++){
+	    var formatname = getElementTextNS("", "Format", prtElmt, i);
+	    formatStrList[i] = formatname;
+  	}
+
+  	debug("buildImageFormatList finished");
+}
+
+/**
+* build the select list for image formats
+*/
+function buildImageFormatSelectList(){
+	debug("Build Image Format Select List");
+	try{
+		var div = $("DivSelectlistImageFormats");
+		var selectobj = $("SelectlistImageFormats");
+		for (var i=0; i<formatStrList.length; i++){
+		    appendToSelect(selectobj, formatStrList[i], formatStrList[i]);
+	  	}
+	  	div.show();
+  	}catch(e){
+		showErrorMessage("Error in buildImageFormatSelectList: " + e.message);
+	}
+}
+
+/**
+* clear the select list for image formats
+*/
+function clearImageFormatSelectList() {
+    debug("Clear Image Format Select List");
+    try{
+    	var div = $("DivSelectlistImageFormats");
+    	var selectObj = $("SelectlistImageFormats");
+        while (selectObj.length > 0) {
+            selectObj.remove(0);
+        }
+    	div.hide();
+    }catch(e){
+		showErrorMessage("Error in clearImageFormatSelectList: " + e.message);
+	}
+}
+
+//user select an SRS
+function handleSelectSRS(index) {
+    debug("SRS " + srsStrList[index] +" was selected");
+    srsSel = index;
+    clearLayersSelectlist();
+    buildLayerList(index);
+
+    // clean the old data
+    $("TextfieldGetmapUrl").update("");
+    $("HyperlinkGetmap").href = "";
+	$("DivHyperlinkGetmap").hide();
+}
+
+// empty Layers select list
+function clearLayersSelectlist() {
+   debug("clearLayersSelectlist");
+
+   var div = $("DivSelectlistLayers");
+   var selectObj = $("SelectlistLayers");
+   while (selectObj.length > 0) {
+       selectObj.remove(0);
+   }
+   div.hide();
+   debug("clearLayersSelectlist finished");
+}
+
+// fill layers select list from selected wms server
+// and selected SRS
+function buildLayerList(index) {
+    debug("buildLayerList");
+
+	var div = $("DivSelectlistLayers");
+    var select = $("SelectlistLayers");
+    var srs = srsStrList[index];
+
+    debug("build Layer List with " + srs);
+
+    // skip 0, since 0 is the parent_layer
+    for (var i=1; i<nodelistLayer.length; i++) {
+        var list = getSRSTextList("SRS", nodelistLayer[i]);
+        //debug(list);
+        var bSRSinList = 0;
+
+        // checking the selected SRS is in the list or not!
+        for (var j=0; j<list.length; j++) {
+            if (srs == list[j]) {
+                bSRSinList = true;
+                break;
+            }
+        }
+
+        //If it is, append to the list
+        if (bSRSinList) {
+            var layername = getElementTextNS("", "Name", nodelistLayer[i], 0);
+      	    layerStrList[i] = layername;
+            appendToSelect(select, i, layername);
+        }
+    }
+    if(nodelistLayer.length>=8)
+    	select.size = 8;
+    else
+    	select.size = nodelistLayer.length;
+
+    div.show();
+
+    debug("buildLayerList finished");
+}
+
+
+// retrieve elements text of an XML document element, including
+// elements using namespaces
+function getSRSTextList(local, prtElmt) {
+  //debug("getSRSTextList");
+  var txtList = "";
+  var localList =[];
+
+  var elmtList = prtElmt.getElementsByTagName(local);
+
+  for (var i=0; i<elmtList.length; i++) {
+    var txt = elmtList[i].firstChild.nodeValue;
+    if (txtList.indexOf(txt) != -1) break;
+    //debug(txt);
+    txtList += txt + ",";
+    localList[i] = txt;
+  }
+  return localList;
+}
+
+
+function getElementText(nodelist, index){
+	try{
+		var text = "";
+		if(nodelist[index]){
+			text = nodelist[index].firstChild.nodeValue;
+			return text;
+		}else{
+			return "n/a";
+		}
+	}catch(e){
+		showErrorMessage("Error in getElementText: " + e.message);
+	}
+
+}
+
+// retrieve the text content of an XML document element, including
+// elements using namespaces
+function getElementTextNS(prefix, local, prtElmt, index) {
+  //debug("getElementTextNS");
+
+  var elmt = "";
+  if (prefix && isIE) {
+    // IE/Windows way of handling ns, firefox ignore ns
+    elmt = prtElmt.getElementsByTagName(prefix + ":" + local)[index];
+  }
+  else {
+    elmt = prtElmt.getElementsByTagName(local)[index];
+  }
+  if (elmt) {
+    // get text, accounting for possible
+    // whitespace (carriage return) text nodes
+    if (elmt.childNodes.length > 1) {
+      return elmt.childNodes[1].nodeValue;
+    }
+    else {
+      return elmt.firstChild.nodeValue;
+    }
+  }
+  else {
+    return "n/a";
+  }
+}
+
+// append a value in select list, using txt as text
+function appendToSelect(selectListObj, value, txt) {
+  debug("appendToSelect " + selectListObj.name);
+  var opt;
+  opt = document.createElement("option");
+  opt.value = value;
+  opt.appendChild(document.createTextNode(txt));
+  //opt.selectedIndex = 1;//'selected';
+  selectListObj.appendChild(opt);
+}
+
+// remove all child nodes from a parent node
+function removeChildrenFromNode(node){
+    //debug("removeChildrenFromNode");
+    if (node){
+        var len = node.childNodes.length;
+        if (len==0) return;
+	    while (node.hasChildNodes())	{
+	        node.removeChild(node.firstChild);
+	    }
+	}
+}
+
+
+// build and display url by user selection
+function showGetMapLink(evt) {
+  //debug("showGetMapLink");
+  $("DivHyperlinkGetmap").show();
+
+  var item, anchor;
+
+  if (evt != null) {
+    //evt.target for firefox and evt.srcElement for IE
+    var select = (evt.target) ? evt.target : ((evt.srcElement) ? evt.srcElement : null);
+
+    if (select) {
+      layerSelIndexList = getSelectedValList(select);
+      layerSelStr = getSelectedLayerString(select);
+      debug(layerSelStr);
+
+      debug(getMaxBboxDim());
+
+      var bboxStr = bboxStrList[srsSel];
+      if (layerSelIndexList.length == 1 && singleSelLargeScale) {
+        bboxStr = getBBox(nodelistLayer[layerSelIndexList[0]], srsStrList[srsSel]);
+      }
+
+      var lastUrlGetmap = urlGetmapPrefix + "&SRS=" + srsStrList[srsSel] +
+                "&bbox=" + bboxStr +
+                "&layers=" + layerSelStr;
+
+      urlGetmap = urlGetmapPrefix;
+      debug(urlGetmap);
+
+      /* this is helpful for copy/paste url
+         however, you can see the full url unless you start with server.html
+         Comment out after debugging */
+      var elementGeturl = $("TextfieldGetmapUrl");
+      //elementGeturl.disable();
+      elementGeturl.value = lastUrlGetmap;
+
+
+      var bboxArray = bboxStr.split(",");
+      var viewBox = bboxArray[0]+" "+(-bboxArray[3])+" "+(bboxArray[2]-bboxArray[0])+" "+(bboxArray[3]-bboxArray[1]);
+
+      var newWidthheight = getStretchWidthHeight(bboxArray[0], bboxArray[1], bboxArray[2], bboxArray[3], stndWidth, stndHeight, enablestretchmap);
+      var newWidth = newWidthheight[0];
+      var newHeight = newWidthheight[1];
+
+      parent.urlGetmap = urlGetmap;
+      parent.parasEpsg = srsStrList[srsSel];
+      parent.parasFormat =  $("SelectlistImageFormats").value;//"image/svg+xml";
+      parent.parasLayers = layerSelStr;
+      parent.parasViewBox = viewBox;
+      parent.parasBbox = bboxStr;
+      parent.parasWidth = newWidth;
+      parent.parasHeight = newHeight;
+
+      anchor = $('HyperlinkGetmap');
+      anchor.update("Refresh Map");
+      anchor.href="navigation.svg";
+      anchor.target="right_frame";
+    }
+  }
+}
+
+// Get bbox of an individual layer, for single sel use
+function getBBox(item, srs) {
+  //debug("" + item + ":  " + srs);
+  var bboxDim = "";
+  var elmntList = [];
+
+  elmntList = item.getElementsByTagName("BoundingBox");
+
+  debug(elmntList);
+  debug(elmntList.length);
+
+  for (var i=0; i<elmntList.length; i++) {
+    var local = elmntList[i].getAttribute("SRS");
+    //debug(local);
+    if (srs == local) {
+      bboxDim += elmntList[i].getAttribute("minx") + ",";
+      bboxDim += elmntList[i].getAttribute("miny") + ",";
+      bboxDim += elmntList[i].getAttribute("maxx") + ",";
+      bboxDim += elmntList[i].getAttribute("maxy")
+      break;
+    }
+  }
+  return bboxDim;
+}
+
+// for testing the functionality of bbox
+function getBBoxDim(item, srs) {
+  //debug("" + item + ":  " + srs);
+  var bboxDim = [];
+  var elmntList = [];
+
+  elmntList = item.getElementsByTagName("BoundingBox");
+  //debug(elmntList);
+  //debug(elmntList.length);
+
+  for (var i=0; i<elmntList.length; i++) {
+    var local = elmntList[i].getAttribute("SRS");
+
+    //debug(local);
+    if (srs == local) {
+      bboxDim[0] = elmntList[i].getAttribute("minx")
+      bboxDim[1] = elmntList[i].getAttribute("miny")
+      bboxDim[2] = elmntList[i].getAttribute("maxx")
+      bboxDim[3] = elmntList[i].getAttribute("maxy")
+      break;
+    }
+  }
+  return bboxDim;
+}
+
+// for testing the functionality of bbox
+function getMaxBboxDim() {
+  //debug("getMaxBboxDim");
+  var dim = getBBoxDim(nodelistLayer[layerSelIndexList[0]], srsStrList[srsSel]);
+
+  for (var i=1; i<layerSelIndexList.length; i++) {
+
+    var newdim = getBBoxDim(nodelistLayer[layerSelIndexList[i]], srsStrList[srsSel]);
+
+    if (newdim[0]<dim[0])
+      dim[0] = newdim[0];
+    if (newdim[1]<dim[1])
+      dim[1] = newdim[1];
+    if (newdim[2]>dim[2])
+      dim[2] = newdim[2];
+    if (newdim[3]>dim[3])
+      dim[3] = newdim[3];
+  }
+
+  return dim[0] + "," + dim[1] + "," + dim[2] + "," + dim[3];
+}
+
+// for testing the functionality of bbox
+function getMinBboxDim() {
+  //debug("getMinBboxDim");
+  var dim = getBBoxDim(nodelistLayer[layerSelIndexList[0]], srsStrList[srsSel]);
+
+  for (var i=1; i<layerSelIndexList.length; i++) {
+
+    var newdim = getBBox(nodelistLayer[layerSelIndexList[i]], srsStrList[srsSel]);
+
+    if (newdim[0]>dim[0])
+      dim[0] = newdim[0];
+    if (newdim[1]>dim[1])
+      dim[1] = newdim[1];
+    if (newdim[2]<dim[2])
+      dim[2] = newdim[2];
+    if (newdim[3]<dim[3])
+      dim[3] = newdim[3];
+  }
+
+  return dim[0] + "," + dim[1] + "," + dim[2] + "," + dim[3];
+}
+
+// for debug only
+function showSelectedBboxes() {
+  debug(layerSelIndexList);
+
+  for (var i=0; i<layerSelIndexList.length; i++) {
+    debug(getBBox(nodelistLayer[layerSelIndexList[i]], srsStrList[srsSel]));
+  }
+}
+
+// getSelectedValList from the layer list
+function getSelectedValList(select) {
+  list = [];
+  var ix = 0;
+
+  for (var i=0; i<select.options.length; i++) {
+    if (select.options[i].selected) {
+      list[ix++] = select.options[i].value;
+    }
+  }
+  return list;
+}
+
+// convert the indices to string for url use.
+function getSelectedLayerString(select) {
+  var localStr = "";
+
+  for (var i=0; i<layerSelIndexList.length; i++) {
+    localStr += layerStrList[layerSelIndexList[i]].trim();
+    if (i != layerSelIndexList.length-1) {
+      localStr += ",";
+    }
+  }
+  return localStr;
+}
+
+function getStretchWidthHeight(minx, miny, maxx, maxy, width, height, enablestretchmap)
+{
+    var size = [];
+    if (!enablestretchmap) {
+        size[0] = width;
+        size[1] = height;
+    }
+    else{
+        var w = maxx - minx;
+        var h = maxy - miny;
+        var s = w / h;
+        var scale = width / height;
+        // if w<=h, the height will be kept, but width will be stretched
+        if (s <= 1) {
+            size[0] = height * s;
+            size[1] = height;
+        }
+        // if w>h, the width will be kept, but height will be stretched
+        else if (s > 1) {
+            size[0] = width;
+            size[1] = width / s;
+        }
+    }
+    return size;
+}
+
+function copyToClip(theField) {
+	try{
+		var tempval=eval("document."+theField);
+		tempval.focus();
+		tempval.select();
+		if (document.all){
+			therange=tempval.createTextRange();
+			therange.execCommand("Copy");
+			window.status="Contents highlighted and copied to clipboard!";
+			setTimeout("window.status=''",1800);
+		}
+	}catch(e){
+		showErrorMessage("Error in copyToClip: " + e.message);
+	}
+}
+
+</script>
+</head>
+<body>
+
+<table class="tableContent">
+	<tr>
+        <td align="center"><image src="images/suaslogo64.gif" align="left">
+			<h1>SUAS Map Client</h1>
+			<font class="version" style="text-align:right;padding-right:0px">V2.01 beta</font>
+		</td>
+	</tr>
+	<tr>
+        <td>
+			<div id="loadingMessage" style="display:none"></div>
+			<div id="errorMessage" style="display:none"></div>
+        </td>
+	</tr>
+
+	<tr>
+        <td>
+		<!--Begin of tabs-->
+		<div id="tabs">
+			<ul>
+				<li style="margin-left: 1px" id="tabHeader1" class="currenttab">
+				<a href="javascript:void(0)" onClick="toggleTab(1,6)"><span><img src="images/tab_wms.gif" alt="Web Map Server"  title="Web Map Server" border="0"></span></a></li>
+				<li id="tabHeader2"><a href="javascript:void(0)" onClick="toggleTab(2,6)" ><span><img src="images/tab_info.gif" alt="Map Server Information" title="Map Server Information" border="0"></span></a></li>
+				<li id="tabHeader3"><a href="javascript:void(0)" onclick="toggleTab(3,6)"><span><img src="images/tab_client.gif" alt="Map Client Setting" title="Map Client Setting" border="0"></span></a></li>
+				<li id="tabHeader4"><a href="javascript:void(0)" onClick="toggleTab(4,6)"><span><img src="images/tab_config.gif" alt="Configuration" title="Configuration" border="0"></span></a></li>
+				<li id="tabHeader5"><a href="javascript:void(0)" onclick="toggleTab(5,6);"><span><img src="images/tab_log.png" alt="Logs" title="Logs" border="0"></span></a></li>
+				<li id="tabHeader6"><a href="javascript:void(0)" onclick="toggleTab(6,6);"><span><img src="images/tab_help.gif" alt="Help" title="Help" border="0"></span></a></li>
+			</ul>
+		</div>
+		<!--End of tabs-->
+    	<!--Begin of tabscontent-->
+    	<div id="tabscontent">
+    		<!--Begin of tabscontent1-->
+        	<div id="tabContent1" class="tabContent">
+			<div>
+				<table class="tableContent">
+				<form id="formWMS" name="formWMS">
+            	<tr>
+            		<td>
+						<h5>Web Map Server</h5>
+            		</td>
+	        	</tr>
+				<tr>
+	    			<td>
+						<h2>Server List:</h2>
+						<select onchange="init(this)" id="SelectlistWMS" class="dropdownlist">
+						<option value="">choose map server</option>
+						<option value="http://localhost/suas/WMS/getmapcap.php?">localhost</option>
+						<option value="http://suasdemo.easywms.com/WMS/getmapcap.php?">SUAS MapServer Demo</option>
+						<option value="http://www.gis-news.de/wms/getmapcap.php?">www.gis-news.de</option>
+						<option value="http://viz.globe.gov/viz-bin/wmt.cgi?">viz.globe.gov</option>
+						<!--<option value="http://viz.globe.gov/viz-bin/wmt.cgi?">viz.globe.gov</option>
+						<option value="http://terraservice.net/ogcmap.ashx?">terraservice.net</option>-->
+						</select>
+					</td>
+				</tr>
+        		<tr>
+	    			<td>
+            			<h2>Select Image Format:</h2>
+						<div id="DivSelectlistImageFormats">
+						<select id="SelectlistImageFormats" class="dropdownlist">
+						<!--option value=""></option-->
+						</select>
+						</div>
+            		</td>
+				</tr>
+        		<tr>
+	    			<td>
+						<h2>Select SRS:</h2>
+						<!-- a hidden division for adding radio buttons -->
+						<div id="DivSelectlistSRSs" ></div>
+					</td>
+				</tr>
+        		<tr>
+	    			<td>
+						<h2>Select Layers:</h2>
+						<div id="DivSelectlistLayers" >
+							<select id="SelectlistLayers" multiple size="0" onchange="showGetMapLink(event)" class="dropdownlist" >
+							<!--option value="">choose an SRS</option-->
+							</select>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<h2>GetMap URL:</h2>
+					</td>
+				</tr>
+				<tr>
+            		<td align="right">
+            			<a id="" class="button" href="#" onclick="copyToClip('formWMS.TextfieldGetmapUrl')" >Copy</a>
+            		</td>
+				</tr>
+				<tr>
+            		<td>
+						<!-- a hidden division to show url text -->
+						<input name="TextfieldGetmapUrl" type="text" id="TextfieldGetmapUrl" value="" size="40"  class="smallInput" onmouseover="txtfieldSelectAll(this);"/>
+						<!-- a hidden url to show when user selection is completed -->
+						<div id="DivHyperlinkGetmap" style="display:none"><a id="HyperlinkGetmap" class="button"></a></div>
+					</td>
+				</tr>
+			</form>
+			</table>
+			</div>
+        	</div>
+        	<!--End of tabscontent1-->
+
+			<!--Begin of tabscontent2 Map Server Information-->
+			<div id="tabContent2" class="tabContent" style="display:none;">
+				<div>
+					<table class="tableContent">
+						<tr>
+							<td colspan="2">
+								<h5>Map Server Information</h5>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<h3>Service</h3>
+							</td>
+							<td>
+							</td>
+						</tr>
+						<tr>
+							<table name="Table_Info_Service" id="Table_Info_Service">
+							<div id="Div_Info_Service" class="normalBlock"></div>
+							</table>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<!--End of tabscontent2-->
+
+			<!--Begin of tabscontent3 Map Client Setting-->
+			<div id="tabContent3" class="tabContent" style="display:none;">
+				<div>
+					<table class="tableContent">
+						<tr>
+							<td>
+								<h5>Map Client Setting</h5>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<!--End of tabscontent3-->
+
+			<!--Begin of tabscontent4 Configuration-->
+			<div id="tabContent4" class="tabContent" style="display:none;">
+				<div>
+					<table class="tableContent">
+						<tr>
+							<td>
+								<h5>Configuration</h5>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<h2>Options:</h2>
+								<input type="checkbox" value="true" onclick="toggleDebugMode()" ID="debugmode" NAME="debugmode" class="checkboxstyle" checked>
+								Debug Mode</input>
+           					</td>
+						</tr>
+						<tr>
+							<td>
+
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<!--End of tabscontent4-->
+
+			<!--Begin of tabscontent5 Logs-->
+			<div id="tabContent5" class="tabContent" style="display:none;">
+				<div>
+				<table class="tableBlock">
+					<tr>
+						<td>
+							<h5>Logs</h5>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<h4>Error Logs:</h4>
+						</td>
+					</tr>
+					<tr align="right">
+						<td>
+							<a id="hideorshowDebugError" href="#" onclick="hideDebugErrorMessage()" class="button">Hide</a>
+							<a href="#" onclick="clearDebugErrorMessage()" class="button">Clear</a>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<div class="debugErrorMessage" id="debugErrorMessage" >
+            </div>
+					  </td>
+				</tr>
+					<tr>
+						<td>
+							<h3>Debug Logs:</h3>
+						</td>
+					</tr>
+					<tr align="right">
+						<td>
+							<a id="hideorshowDebug" href="#" onclick="hideDebugMessage()" class="button">Hide</a>
+							<a href="#" onclick="clearDebugMessage()" class="button">Clear</a>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<!--div class="debugMessage" id="debugMessage"><br></div-->
+
+
+            <div class="debugMessage" id="debugMessage" > </div>
+							<!--id/name="debugMessageScroll" defined in lib/scroller.js>
+							<div style="height:155px; overflow:hidden" class="makeScroll" id="debugMessageScroll">
+								<br>
+							</div-->
+					    </td>
+					</tr>
+				</table>
+				</div>
+			</div>
+			<!--End of tabscontent5-->
+
+			<!--Begin of tabscontent6 help-->
+			<div id="tabContent6" class="tabContent" style="display:none;">
+				<div>
+					<table class="tableContent">
+						<tr>
+							<td>
+								<h5>Help</h5>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<!--End of tabscontent6-->
+    </div>
+	<!--End of tabscontent-->
+            </td>
+		</tr>
+</table>
+
+
+</body>
+</html>
+
+<!-- not used, but helpful for checking
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:26715" id="rd1">EPSG:26715</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:27700" id="rd2">EPSG:27700</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:31467" id="rd3">EPSG:31467</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:31468" id="rd4">EPSG:31468</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:4340" id="rd5">EPSG:4340</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:5713" id="rd6">EPSG:5713</input>
+<input type="radio" name= "RadiogroupSRSs" value="EPSG:62676405" id="rd7">EPSG:62676405</input>
+
+<DIV  class="makeScroll"><br><br><br><br><br><br><br><br></DIV>
+
+<div style="overflow: hidden; position: relative;" id="debugMessage" class="makeScroll">
+<div style="position: relative; float: left; width: 190px;" class="scroll-innerBox">sdsds</div>
+<div id="scroll-track4" style="position: relative; float: left; display: inline; height: 100px;" class="scroll-track">
+<div style="height: 60px; top: 0px; position: relative;" id="scroll-handle4" class="scroll-handle selected"></div>
+</div></div>
+
+# <div style="border: solid 1px #ff0000; height: 100px; overflow: auto;">
+# 1<br />
+# 2<br />
+# 3<br />
+# 4<br />
+# 5<br />
+# 6<br />
+# 7<br />
+# 8<br />
+# 9<br />
+# 10<br />
+# 11<br />
+# 12<br />
+# 13<br />
+# 14<br />
+# 15<br />
+# 16<br />
+# 17<br />
+# 18<br />
+# 19<br />
+# 20<br />
+# </div>
+-->
+

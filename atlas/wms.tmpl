@@ -1,0 +1,489 @@
+<?php
+
+include_once '../../../wms/SendException.class.php';
+include_once '../../../config.php';
+include_once '../../../models/common.inc';
+include_once '../../../models/CommonFormula.class.php';
+require_once '../../../models/setting.inc';
+require_once '../../../models/perm.inc';
+require_once '../../../render/RasterImagerRender.class.php';
+require_once '../../../render/BMPRender.class.php';
+require_once '../../../render/GDGradientFill.php';
+require_once '../../../models/Cache.class.php';
+require_once '../../../parser/AttributeParser.class.php';
+require_once '../../../atlas/atlas_common.inc';
+
+$interface_version = "##INTERFACE_VERSION##";
+$aid = "##AID##";
+$perm = false;
+$btn_user_interface = true;
+
+$errornumber = 0;
+switchDatabase_interface($dbtype);
+$database = new Database();
+$database->databaseConfig($dbserver, $dbusername ,$dbpassword, $dbname, $dbprefix);
+$database->databaseConnect();
+$atlas_info = $database->db_get_atlas($aid);
+
+session_start();
+$perm = perm_atlas_view($atlas_info);
+if(!$perm){
+	header("Content-type: text/html;charset=utf-8");
+	echo "You have not logged in or you have no permission to access this atlas";
+	return;
+	exit();
+}
+
+$assalowarray = array("%3a", "%2f", "%40", "%2b", "%28", "%29", "%3f", "%3d", "%26");
+$assaupperarray = array("%3A", "%2F", "%40", "%2B", "%28", "%29", "%3F", "%3D", "%26");
+$chararray = array(":", "/", "@", "+", "(", ")", "?", "=", "&");
+
+$QUERY_STRING = $_SERVER ['QUERY_STRING'];
+$QUERY_STRING = str_replace($assalowarray, $chararray, $QUERY_STRING);
+$QUERY_STRING = str_replace($assaupperarray, $chararray, $QUERY_STRING);
+$QUERY_STRING = str_replace('&amp;', '&', $QUERY_STRING);
+
+$a = explode('&', $QUERY_STRING);
+$i = 0;
+while ($i < count($a)) {
+	$b = split('=', $a[$i]);
+	$text_upper = strtoupper($b[0]);
+	if ($text_upper == "AID") {
+		$aid = urldecode($b[1]);
+	}
+	elseif ($text_upper == "SERVICE") {
+		$map_paras['service'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "REQUEST") {
+		$map_paras['request'] = urldecode($b[1]);
+		$map_paras['requests'][] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "VERSION") { 
+		$map_paras['version'] = $b[1];
+	}
+	elseif ($text_upper == "STYLES") {
+		$map_paras['style'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "WIDTH") {
+		$map_paras['width'] = urldecode($b[1]);
+		$map_paras['widths'][] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "HEIGHT") {
+		$map_paras['height'] = urldecode($b[1]);
+		$map_paras['heights'][] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "FORMAT") { 
+		$map_paras['format'] = $b[1];
+	}
+	elseif ($text_upper == "SRS") {
+		$map_paras['srs'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "BBOX") {
+		$map_paras['bbox'] = urldecode($b[1]);
+		$map_paras['bboxs'][] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "LAYERS") {
+		$map_paras['layers'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "TRANSPARENT") {
+		$map_paras['transparent'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "EXCEPTIONS") {
+		$map_paras['exceptions'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "INFO_FORMAT") {
+		$map_paras['info_format'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "QUERY_LAYERS") {
+		$map_paras['query_layers'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "X") {
+		$map_paras['pixel_x'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "Y") {
+		$map_paras['pixel_y'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "RADIUS") {
+		$map_paras['radius'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "BGCOLOR") {
+		$map_paras['bgcolor'] = urldecode($b[1]);
+		$map_paras['bgcolor'] = formatParamColor($map_paras['bgcolor']);
+	}
+	elseif ($text_upper == "SKYCOLOR") {
+		$map_paras['skycolor'] = urldecode($b[1]);
+		$map_paras['skycolor'] = formatParamColor($map_paras['skycolor']);
+	}
+	elseif ($text_upper == "HANGLE") {
+		$map_paras['hangle'] = urldecode($b[1]);
+		$map_paras['hangle'] = deg2rad($map_paras['hangle']);
+	}
+	elseif ($text_upper == "VANGLE") {
+		$map_paras['vangle'] = urldecode($b[1]);
+		$map_paras['vangle'] = deg2rad($map_paras['vangle']);
+	}
+	elseif ($text_upper == "DISTANCE") {
+		$map_paras['distance'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "ELEVATIONS") {
+		$map_paras['elevations'] = urldecode($b[1]);
+		$elevationsvalues = explode(",", $map_paras['elevations']);
+	}
+	elseif ($text_upper == "POI") {
+		$map_paras['poi'] = urldecode($b[1]);
+		$poivalues = explode(",", $map_paras['poi']);
+		$map_paras['poix'] = $poivalues[0];
+		$map_paras['poiy'] = $poivalues[1];
+		$map_paras['poiz'] = $poivalues[2];
+	}
+	elseif ($text_upper == "PITCH") {
+		$map_paras['pitch'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "YAW") {
+		$map_paras['yaw'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "ROLL") {
+		$map_paras['roll'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "AOV") {
+		$map_paras['aov'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "ENVIRONMENT") {
+		$map_paras['environment'] = urldecode($b[1]);
+	}
+	elseif ($text_upper == "BGIMAGE") {
+		$map_paras['bgimage'] = urldecode($b[1]);
+	}
+	$i++;
+}
+//not data via Get
+if($QUERY_STRING == ""){
+	$_POST = array_change_key_case($_POST, CASE_UPPER);
+	$aid = $_POST["AID"];
+	$map_paras['service'] = urldecode($_POST["SERVICE"]);
+	$map_paras['request'] = urldecode($_POST["REQUEST"]);
+	$map_paras['version'] = $_POST["VERSION"];
+	$map_paras['style'] = urldecode($_POST["STYLES"]);
+	$map_paras['width'] = urldecode($_POST["WIDTH"]);
+	$map_paras['height'] = urldecode($_POST["HEIGHT"]);
+	$map_paras['format'] = $_POST["FORMAT"];
+	$map_paras['srs'] = urldecode($_POST["SRS"]);
+	$map_paras['bbox'] = urldecode($_POST["BBOX"]);
+	$map_paras['layers'] = urldecode($_POST["LAYERS"]);
+	$map_paras['transparent'] = urldecode($_POST["TRANSPARENT"]);
+	$map_paras['exceptions'] = urldecode($_POST["EXCEPTIONS"]);
+	$map_paras['info_format'] = urldecode($_POST["INFO_FORMAT"]);
+	$map_paras['query_layers'] = urldecode($_POST["QUERY_LAYERS"]);
+	$map_paras['pixel_x'] = urldecode($_POST["X"]);
+	$map_paras['pixel_y'] = urldecode($_POST["Y"]);
+	$map_paras['radius'] = urldecode($_POST["RADIUS"]);
+	$map_paras['bgcolor'] = urldecode($_POST["BGCOLOR"]);
+	$map_paras['bgcolor'] = formatParamColor($map_paras['bgcolor']);	
+	$map_paras['skycolor'] = urldecode($_POST["SKYCOLOR"]);
+	$map_paras['skycolor'] = formatParamColor($map_paras['skycolor']);
+	$map_paras['hangle'] = urldecode($_POST["HANGLE"]);
+	$map_paras['hangle'] = deg2rad($map_paras['hangle']);
+	$map_paras['vangle'] = urldecode($_POST["VANGLE"]);
+	$map_paras['vangle'] = deg2rad($map_paras['vangle']);
+	$map_paras['distance'] = urldecode($_POST["DISTANCE"]);
+	$map_paras['elevations'] = urldecode($_POST["ELEVATIONS"]);
+	$elevationsvalues = explode(",", $map_paras['elevations']);
+	$map_paras['poi'] = urldecode($_POST["POI"]);
+	$poivalues = explode(",", $map_paras['poi']);
+	$map_paras['poix'] = $poivalues[0];
+	$map_paras['poiy'] = $poivalues[1];
+	$map_paras['poiz'] = $poivalues[2];
+	$map_paras['pitch'] = urldecode($_POST["PITCH"]);
+	$map_paras['yaw'] = urldecode($_POST["YAW"]);
+	$map_paras['roll'] = urldecode($_POST["ROLL"]);
+	$map_paras['aov'] = urldecode($_POST["AOV"]);
+	$map_paras['environment'] = urldecode($_POST["ENVIRONMENT"]);
+	$map_paras['bgimage'] = urldecode($_POST["BGIMAGE"]);
+}
+
+//print the interface version
+if(equalIgnoreCase($_REQUEST["INTERFACE_VERSION"], "true")){
+	echo $interface_version;
+	return;
+}
+//TODO this will fix GetFeatureInfo request from GetOpenLayerViewer.php, there are 2 'request' getFeatureInfo and GetMap in url
+//this is wrong, reason caused by OpenLayers is unknown!
+if(count($map_paras['requests'])>1){
+	$counti = 0;
+	foreach($map_paras['requests'] as $v){
+		if(equalIgnoreCase($v, "GetFeatureInfo")){
+			$map_paras['request'] = "GetFeatureInfo";
+			$map_paras['width'] = $map_paras['widths'][$counti];
+			$map_paras['height'] = $map_paras['heights'][$counti];
+			$map_paras['bbox'] = $map_paras['bboxs'][$counti];
+			break;
+		}
+		$counti++;
+	}
+}
+
+if($map_paras['exceptions'] == ""){
+	$map_paras['exceptions'] = "application/vnd.ogc.se_xml";
+}
+if(equalIgnoreCase($map_paras['transparent'], "true")){
+	$map_paras['transparent'] = true;
+}
+
+$bboxvalues = explode(",",$map_paras['bbox']);
+$numberofvalues = count($bboxvalues);
+$minx = $bboxvalues[0];
+$miny = $bboxvalues[1];
+$maxx = $bboxvalues[2];
+$maxy = $bboxvalues[3];
+
+$cfg_data = $database->db_get_atlas_cfg("", $aid);
+$atlas_cfg = array();
+if($cfg_data){
+	$atlas_cfg = AttributeParser::extractAttribute($cfg_data['variable']);
+	$atlas_cfg['enableCache'] = $atlas_cfg['cacheExpiredTime']=="0"?false:true;
+	$atlas_cfg['enablestretchmap'] = $atlas_cfg['enablestretchmap']=="0"?false:true;
+	$atlas_cfg['showCopyright'] = $atlas_cfg['showCopyright']=="0"?false:true;
+	$atlas_cfg['enableSVGPixelCoordinate'] = $atlas_cfg['enableSVGPixelCoordinate']=="0"?false:true;
+	$atlas_cfg['enableStreamSVG'] = $atlas_cfg['enableStreamSVG']=="0"?false:true;
+}else{
+	$atlas_cfg = atlas_get_default_cfg();
+}
+$atlas_cfg['custom_param_maxgeonum'] = $_REQUEST['custom_param_maxgeonum'];
+
+$custom_image_path = "rasterdata/";
+$custom_image_path_absolute = "rasterdata/";
+
+$sendexceptionclass = new SendExceptionClass(get_base_server_host(), "wms", SUAS_CFG_WMS_VERSION ,$map_paras['exceptions'],$map_paras['format'],
+	$minx, $miny, $maxx, $maxy, $map_paras['width'], $map_paras['height'], $enablestretchmap,$params['GetImageDefaultWidth'],$params['GetImageDefaultHeight']);
+
+
+if (!equalIgnoreCase($map_paras['request'],"GetFeatureInfo") AND !equalIgnoreCase($map_paras['request'],"GetMap") AND !equalIgnoreCase($map_paras['request'],"GetCapabilities") AND
+		!equalIgnoreCase($map_paras['request'],"GetStyles") AND !equalIgnoreCase($map_paras['request'],"DescribeLayer") AND !equalIgnoreCase($map_paras['request'],"GetLegendGraphic") AND
+		!equalIgnoreCase($map_paras['request'],"GetMap25D") AND !equalIgnoreCase($map_paras['request'],"GetMap3D") AND $map_paras['request'] != "") {
+	$errornumber = 33;
+	$errorexceptionstring = "The REQUEST " . $map_paras['request'] . " is not supported by the server. The supported Requests are GetMap, GetCapabilities, GetFeatureInfo, GetStyles, GetLegendGraphic, DescribeLayer, GetMap25D and GetMap3D. " ;
+}
+if ($map_paras['request'] == "") {
+	$errornumber = 32;
+	$errorexceptionstring = "The REQUEST has not been given. The supported Requests are GetMap, GetCapabilities, GetFeatureInfo, GetStyles, GetLegendGraphic and DescribeLayer. " ;
+}
+if (!equalIgnoreCase($map_paras['version'],SUAS_CFG_WMS_VERSION) AND $map_paras['version'] != "") {
+	$errornumber = 20;
+	$errorexceptionstring = "Invalid version number " . $map_paras['version'] . " given. The supported version number is VERSION = " . SUAS_CFG_WMS_VERSION ;
+}
+if ($map_paras['version'] == "") {
+	$errornumber = 21;
+	$errorexceptionstring = "Version number has not been given. The supported version number is VERSION = " . SUAS_CFG_WMS_VERSION ;
+}
+if (!equalIgnoreCase($map_paras['service'],"WMS") AND $map_paras['service'] != "") {
+	$errornumber = 1;
+	$errorexceptionstring = " " . $map_paras['service'] . " is not supported by the server. The only  service available is WMS" ;
+}
+if ($map_paras['service'] == "") {
+	$errornumber = 21;
+	$errorexceptionstring = "SERVICE has not been given. The supported SERVICE is WMS" ;
+}
+if (!equalIgnoreCase($map_paras['exceptions'],"application/vnd.ogc.se_xml") AND !equalIgnoreCase($map_paras['exceptions'],"application/vnd.ogc.se_inimage")) {
+	$errornumber = 3;
+	$errorexceptionstring = " " . $map_paras['exceptions'] . " is not supported by the server. The only  service available is application/vnd.ogc.se_xml and application/vnd.ogc.se_inimage." ;
+}
+if ($errornumber) {
+	$sendexceptionclass->sendexception($errornumber, $errorexceptionstring);
+	$database->databaseClose();
+}
+else{
+	
+	if (equalIgnoreCase($map_paras['request'],"GetMap") OR equalIgnoreCase($map_paras['request'],"GetMap25D") OR equalIgnoreCase($map_paras['request'],"GetMap3D")) {
+		if(equalIgnoreCase($map_paras['request'],"GetMap25D")){
+			$map_paras['distance'] = ($maxy - $miny)*1.2;
+			define("blnGetMap25D", true);
+		}
+		else{
+			define("blnGetMap25D", false);
+		}
+		
+		include_once '../../../render/WKTParser.class.php';
+		include_once '../../../parser/StyleReader.class.php';
+		include_once '../../../models/RasterColor.class.php';
+		$errornumber = 0;
+		$errorexceptionstring = "";
+		
+		if ($map_paras['format']  == ""){
+			$errornumber = 4;
+			$errorexceptionstring = "Format has not been given.";
+		}
+		else if ( !equalIgnoreCase($map_paras['format'],"image/svg+xml") AND !equalIgnoreCase($map_paras['format'],"image/svgt+xml") AND !equalIgnoreCase($map_paras['format'],"image/svgb+xml")
+				AND !equalIgnoreCase($map_paras['format'],"image/svgz+xml") AND !equalIgnoreCase($map_paras['format'],"image/svgtz+xml") AND !equalIgnoreCase($map_paras['format'],"image/svgbz+xml")
+				AND !equalIgnoreCase($map_paras['format'],"image/png") AND !equalIgnoreCase($map_paras['format'],"image/jpeg")
+				AND !equalIgnoreCase($map_paras['format'],"image/gif")AND !equalIgnoreCase($map_paras['format'],"application/pdf") AND !equalIgnoreCase($map_paras['format'],"application/ezpdf")
+				AND !equalIgnoreCase($map_paras['format'],"image/wbmp") AND !equalIgnoreCase($map_paras['format'],"application/x-shockwave-flash")
+				AND !equalIgnoreCase($map_paras['format'],"image/bmp") AND !equalIgnoreCase($map_paras['format'],"model/vrml")
+				AND !equalIgnoreCase($map_paras['format'],"model/vrmlz") AND !equalIgnoreCase($map_paras['format'],"model/x3d+xml")
+				AND !equalIgnoreCase($map_paras['format'],"application/vnd.google-earth.kml+xml") AND !equalIgnoreCase($map_paras['format'],"application/vnd.google-earth.kmz")
+				AND !equalIgnoreCase($map_paras['format'],"model/x3dz")
+				AND $map_paras['format'] !=""){
+			$errornumber = 3;
+			$errorexceptionstring = "Invalid Format '" .$map_paras['format'].
+				"' is given.The \"image/svg+xml\" , \"image/svgt+xml\",\"image/svgb+xml\", \"image/svgz+xml\",\"image/svgtz+xml\",".
+				"\"image/svgbz+xml\",\"model/vrml\",\"model/vrmlz\", \"model/x3d+xml\", \"model/x3dz\",".
+				"\"application/vnd.google-earth.kml+xml\",\"application/vnd.google-earth.kmz\",".
+				"\"image/png\", \"application/pdf\", \"application/ezpdf\", \"application/x-shockwave-flash\", \"image/jpeg\", \"image/gif\" ,".
+				"\"image/bmp\" and \"image/wbmp\" are the formats supported" ;
+		}
+		if ($errornumber != 0){
+			$sendexceptionclass->sendexception($errornumber,$errorexceptionstring);
+		}
+		
+		/**Getmap SVG Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svg+xml") ){
+			include '../../../models/CreateStyle4SVG.php';
+			require_once '../../../render/SVGRender.class.php';
+			if ($atlas_cfg['enableStreamSVG']) {
+    			require_once '../../../render/SVGStreamRender.class.php';
+			}
+			include '../../../wms/GetMap_SVG.class.php';
+		}
+		/**Getmap SVGT Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svgt+xml") ){
+			include '../../../models/CreateStyle4SVGT.php';
+			require_once '../../../render/SVGTRender.class.php';
+			if ($atlas_cfg['enableStreamSVG']) {
+    			require_once '../../../render/SVGStreamRender.class.php';
+			}
+			include '../../../wms/GetMap_SVGT.class.php';
+		}
+		/**Getmap SVGB Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svgb+xml") ){
+			include '../../../models/CreateStyle4SVGT.php';
+			require_once '../../../render/SVGTRender.class.php';
+			if ($atlas_cfg['enableStreamSVG']) {
+    			require_once '../../../render/SVGTStreamRender.class.php';
+			}
+			include '../../../wms/GetMap_SVGT.class.php';
+		}
+		/**Getmap SVGB Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svgz+xml") ){
+			include '../../../models/CreateStyle4SVG.php';
+			include_once '../../../render/GZip.class.php';
+			require_once '../../../render/SVGStreamRender.class.php';
+			include '../../../wms/GetMap_SVGZ.class.php';
+		}
+		/**Getmap SVGT Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svgtz+xml") ){
+			include '../../../models/CreateStyle4SVGT.php';
+			include_once '../../../render/GZip.class.php';
+			require_once '../../../render/SVGTStreamRender.class.php';
+			include '../../../wms/GetMap_SVGTZ.class.php';
+		}
+		/**Getmap SVGB Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/svgbz+xml") ){
+			include '../../../models/CreateStyle4SVGT.php';
+			include_once '../../../render/GZip.class.php';
+			require_once '../../../render/SVGTStreamRender.class.php';
+			include '../../../wms/GetMap_SVGTZ.class.php';
+		}
+		/**Getmap Raster Image Class*/
+		if ( equalIgnoreCase($map_paras['format'],"image/png") OR equalIgnoreCase($map_paras['format'],"image/gif") OR equalIgnoreCase($map_paras['format'],"image/jpeg")
+		OR equalIgnoreCase($map_paras['format'],"image/wbmp") OR $map_paras['format'] == "image/bmp"){
+			require '../../../render/Path2Point.class.php';
+			include '../../../wms/GetMap_RasterImage.class.php';
+		}
+		/**Getmap PDF Class*/
+		if ( equalIgnoreCase($map_paras['format'],"application/pdf")){
+			require '../../../render/Path2Point.class.php';
+			include_once '../../../render/PDFRender.class.php';
+			include '../../../wms/GetMap_PDF.class.php';
+		}
+		/**Getmap PDF free Class*/
+		if ( equalIgnoreCase($map_paras['format'],"application/ezpdf") ){
+			include '../../../plugin/www.ros.co.nz/class.ezpdf.php';
+			require '../../../render/Path2Point.class.php';
+			include '../../../render/EzPDFRender.class.php';
+			include '../../../wms/GetMap_EzPDF.class.php';
+		}
+		/**Getmap SWF Class*/
+		if ( equalIgnoreCase($map_paras['format'],"application/x-shockwave-flash") ){
+			require '../../../render/Path2Point.class.php';
+			include '../../../render/SWFRender.class.php';
+			include '../../../wms/GetMap_SWF.class.php';
+		}
+		if ( equalIgnoreCase($map_paras['format'],"model/vrml") OR equalIgnoreCase($map_paras['format'],"model/vrmlz")){
+			if(equalIgnoreCase($map_paras['request'],"GetMap3D")){
+				require '../../../render/Path2Point.class.php';
+				require '../../../render/VRMLRender.class.php';
+				include_once '../../../render/GZip.class.php';
+				include '../../../wms/GetMap_VRML.class.php';
+			}
+			else{
+				$errornumber = 56;
+				$errorexceptionstring = "The REQUEST should be GetMap3D, but ".$map_paras['request']." is given.";
+				$sendexceptionclass->sendexception($errornumber,$errorexceptionstring);
+			}
+			
+		}
+		if ( equalIgnoreCase($map_paras['format'],"model/x3d+xml") OR equalIgnoreCase($map_paras['format'],"model/x3dz")){
+			if(equalIgnoreCase($map_paras['request'],"GetMap3D")){
+				include_once '../../../render/GZip.class.php';
+				require_once '../../../render/X3DRender.class.php';
+				include '../../../wms/GetMap_X3D.class.php';
+			}
+			else{
+				$errornumber = 57;
+				$errorexceptionstring = "The REQUEST should be GetMap3D, but ".$map_paras['request']." is given.";
+				$sendexceptionclass->sendexception($errornumber,$errorexceptionstring);
+			}
+			
+		}
+		if ( equalIgnoreCase($map_paras['format'],"application/vnd.google-earth.kml+xml") OR equalIgnoreCase($map_paras['format'],"application/vnd.google-earth.kmz")){
+			if(equalIgnoreCase($map_paras['request'],"GetMap3D") OR equalIgnoreCase($map_paras['request'],"GetMap")){
+				include_once '../../../parser/StyleReader.class.php';
+				include_once '../../../models/RasterColor.class.php';
+				include_once '../../../render/GZip.class.php';
+				require_once '../../../render/KMLRender.class.php';
+				
+				include '../../../wms/GetMap_KML.class.php';
+			}
+			else{
+				$errornumber = 58;
+				$errorexceptionstring = "The REQUEST should be GetMap3D, but ".$map_paras['request']." is given.";
+				$sendexceptionclass->sendexception($errornumber,$errorexceptionstring);
+			}
+			
+		}
+
+	}
+	
+	if (equalIgnoreCase($map_paras['request'],"GetCapabilities")) {
+		if(equalIgnoreCase($map_paras['format'],"text/x-json")){
+			$proxyurl = get_base_server_host()."wms/getjson.php?URL=".get_base_server_host()
+			."wms/getmapcap.php?SERVICE=".$map_paras['service']."&VERSION=".$map_paras['version']."&REQUEST=".$map_paras['request']."";
+			echo file_get_contents($proxyurl);
+		}
+		else
+			include '../../../wms/GetCapabilities.class.php';
+	}
+	
+	if (equalIgnoreCase($map_paras['request'],"GetFeatureInfo")) {
+		include '../../../wms/GetFeatureInfo.class.php';
+	}
+	
+	if (equalIgnoreCase($map_paras['request'],"DescribeLayer")) {
+		include '../../../wms/DescribeLayer.class.php';
+	}
+	
+	if (equalIgnoreCase($map_paras['request'],"GetLegendGraphic")) {
+		require_once '../../../parser/StyleReader.class.php';
+		require_once '../../../models/RasterColor.class.php';		
+		include '../../../wms/GetLegendGraphic.class.php';
+	}
+	
+	if (equalIgnoreCase($map_paras['request'],"GetStyles")) {
+		require_once '../../../render/RasterImagerRender.class.php';
+		require_once '../../../parser/StyleReader.class.php';
+		require '../../../models/RasterColor.class.php';
+		include '../../../wms/GetStyles.class.php';
+	}
+	
+}
+
+?>

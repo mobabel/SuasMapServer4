@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="Author" content="Wei Kin Huang" />
+<meta name="Version" content="0.1.0" />
+<title>Form Style</title>
+<link rel="stylesheet" type="text/css" media="screen,projection" href="formstyle.css" />
+</head>
+<body>
+
+<div id="wrapper">
+<form action="" method="post">
+	<fieldset>
+	<input type="checkbox" name="f_a" id="f_a" checked="checked" value="1" /><label for="f_a">Checked</label><br />
+	<input type="checkbox" name="f_b" id="f_b" value="1" /><label for="f_b">Unchecked</label><br />
+	<input type="checkbox" name="f_c" id="f_c" disabled="disabled" checked="checked" value="1" /><label for="f_c">Checked Disabled</label><br />
+	<input type="checkbox" name="f_d" id="f_d" disabled="disabled" value="1" /><label for="f_d">Unchecked Disabled</label><br />
+	<br />
+	<br />
+	<input type="radio" name="f_e" id="f_e" checked="checked" value="1" /><label for="f_e">Radio Checked</label><br />
+	<input type="radio" name="f_f" id="f_f" value="1" /><label for="f_f">Radio Unchecked</label><br />
+	<input type="radio" name="f_g" id="f_g" disabled="disabled" checked="checked" value="1" /><label for="f_g">Radio Checked Disabled</label><br />
+	<input type="radio" name="f_h" id="f_h" disabled="disabled" value="1" /><label for="f_h">Radio Unchecked Disabled</label><br />
+	<br />
+	<br />
+	<input type="radio" name="f_i" id="f_i" value="1" /><label for="f_i">Radio Group #1</label><br />
+	<input type="radio" name="f_i" id="f_j" checked="checked" value="1" /><label for="f_j">Radio Group #2 checked</label><br />
+	<input type="radio" name="f_i" id="f_k" value="1" /><label for="f_k">Radio Group #3</label><br />
+	<br />
+	<br />
+	<select name="f_m" id="f_m">
+		<option value="">Please Choose</option>
+		<option value="1">Option 1</option>
+		<option value="2" selected="selected">Option 2</option>
+		<option value="3">Option 3</option>
+		<option value="4">Option 4</option>
+		<option value="5">Option 5</option>
+		<option value="6">Option 6</option>
+		<option value="7">Option 7</option>
+		<option value="8">Option 8</option>
+		<option value="9">Option 9 blah blah blah yeah yeah yeah omg omg omg omg (this line should wrap)</option>
+		<option value="10">Option 10</option>
+		<option value="11">Option 11</option>
+	</select><label for="f_m">Select Option 2 preselected</label>
+	<br />
+	<br />
+	<input type="file" name="f_l" id="f_l" value="1" /><label for="f_l">File Input</label><br />
+	<br />
+	<input type="submit" />
+	</fieldset>
+</form>
+</div>
+<div id="javascript" class="hide">
+<script type="text/javascript" src="../../jquery-1.3.2.min.js"></script>
+<script type="text/javascript" src="jquery.formstyle-0.1.0.js"></script>
+<script type="text/javascript">
+//<![CDATA[
+$(document).ready(function(){
+	$('input:checkbox').checkboxstyle();
+	$('input:radio').radiostyle();
+	$('select').selectstyle();
+	$('input[type=file]').filestyle();
+});
+//]]>
+</script>
+</div>
+</body>
+</html>

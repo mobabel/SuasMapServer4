@@ -1,0 +1,586 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<HTML>
+<HEAD><TITLE>SUAS MapServer</TITLE>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="Keywords" content="GIS, Spatial, Spatial IT, Geographic Information System, Geoinformationssysteme, Geo-Informationssysteme, SQL, MapInfo, WMS, WFS, SVG, OGC, Web Service" />
+<meta http-equiv="Keywords" content="GIS, Spatial, Spatial IT, Geographic Information System, Geoinformationssysteme, Geo-Informationssysteme, SQL, MapInfo, WMS, WFS, SVG, OGC, Web Service" />
+<meta name="description" content="Open Source Web Map Server for Geodata"/>
+<link rel="Bookmark" href="favicon.ico">
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+
+<style type="text/css">
+.oneItem
+{
+  PADDING-RIGHT: 10px;
+	BORDER: #cdcdcd 1px solid;
+	PADDING-LEFT: 10px;
+	PADDING-BOTTOM: 20px;
+	BORDER-LEFT: #cdcdcd 1px solid;
+	PADDING-TOP: 10px
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	margin-left: 20%;
+    margin-right: 20%;
+	font-family: arial;
+	text-decoration: none;
+}
+a {
+	text-decoration: none;
+}
+#outermost
+{
+  border: #cdcdcd 2px dashed;
+	background-color: white;
+  padding-bottom: 50px;
+}
+.sectiontitle
+{
+  margin-top: 10px;
+	/*border-top: #cdcdcd 11px dashed;*/
+	FONT-WEIGHT: bold;
+	FONT-SIZE: 11pt;
+	PADDING-BOTTOM: 8px; PADDING-TOP: 1px; LETTER-SPACING: 5pt;
+	font-variant: small-caps;
+}
+.sectioncontent
+{
+  padding-left: 33px;
+  padding-right: 33px;
+	FONT-SIZE: 10pt; TEXT-ALIGN: justify
+}
+.maintitle
+{
+  font-size: 43px;color: rgb(51,102,204);
+	padding-right: 30px;
+	letter-spacing: 3px;
+  padding-bottom: 10px;
+}
+}
+.maintitlediv
+{
+  font-size: 11px;color: rgb(51,102,204);
+  margin-top: 20px;
+  margin-bottom: 20px;
+	padding-left: 33px;
+  padding-top: 10px;
+	padding-right: 30px;
+}
+div.maintitlediv a
+{
+  font-size: 13px;color: rgb(5,102,204);
+}
+div.maintitlediv a:hover {background-color:#eee;}
+
+.tableContent
+{
+   PADDING-RIGHT: 8px;
+   PADDING-LEFT: 8px;
+   PADDING-BOTTOM: 8px;
+   PADDING-TOP: 0px
+}
+.imageIndex
+{
+	border=0 ;
+	padding-right:25px;
+	padding-rbottom:25px;
+}
+
+.contentFrame
+{
+	PADDING-RIGHT: 46px; PADDING-LEFT: 33px; PADDING-TOP: 0px;
+}
+#container {
+	position: relative;
+	width: 800px;
+	margin: 0 auto;
+	text-align: left;
+	border: 2px solid #cdcdcd;
+	background-color: white;
+}
+
+#container ul#menu {
+	position: relative;
+	width: 100%;
+	font-weight: bold;
+}
+#container ul#menu li {
+	float: left;
+	display: inline;
+}
+#container ul#menu li a {
+	text-align: center;
+	display: block;
+	width: 180px;
+	height: 25px;
+	line-height: 25px;
+	text-decoration: none;
+}
+#container ul#menu li a:hover {
+	color: #fff;
+	background-color: #5575B7;
+}
+#container h1,
+#container h2 {
+	margin: 0.5em 0 0.5em 0;
+	font-size: 1.4em;
+}
+#container .content {
+
+	background-color: white;
+}
+#container hr {
+	clear: both;
+	visibility: hidden;
+}
+#container a.current {
+	background-color: #5575B7;
+	color: #fff;
+}
+#container a.ghost  {
+	background-color: #D7E3F3;
+	color: #13568D;
+}
+#container .on {
+	display: block;
+}
+#container .off {
+	display: none;
+}
+</style>
+<script type="text/javascript">
+<!--
+function multiClass(eltId) {
+	arrLinkId = new Array('_0','_1','_2','_3','_4','_5','_6','_7');
+	intNbLinkElt = new Number(arrLinkId.length);
+	arrClassLink = new Array('current','ghost');
+	strContent = new String()
+	for (i=0; i<intNbLinkElt; i++) {
+		strContent = "menu"+arrLinkId[i];
+		if ( arrLinkId[i] == eltId ) {
+			document.getElementById(arrLinkId[i]).className = arrClassLink[0];
+			document.getElementById(strContent).className = 'on content';
+		} else {
+			document.getElementById(arrLinkId[i]).className = arrClassLink[1];
+			document.getElementById(strContent).className = 'off content';
+		}
+	}
+}
+-->
+</script>
+</HEAD>
+<BODY>
+
+<div id="container">
+
+      <a href="http://www.easywms.com"><img src="img/suaslogo.png" alt="SUAS MapServer 4" border="0"></a><br />
+
+	  	<ul id="menu">
+		<li class="menu0">
+			<a href="#" id="_0" class="current" onclick="multiClass(this.id)" alt="menu1">Overview</a>
+		</li>
+		<li class="menu1">
+			<a href="#" id="_1" class="ghost" onclick="multiClass(this.id)" alt="menu1">Features</a>
+		</li>
+		<li class="menu2">
+			<a href="#" id="_2" class="ghost" onclick="multiClass(this.id)" alt="menu2">DEMO</a>
+		</li>
+		<li class="menu3">
+			<a href="#" id="_3" class="ghost" onclick="multiClass(this.id)" alt="menu3">Install</a>
+		</li>
+		<li class="menu4">
+			<a href="#" id="_4" class="ghost" onclick="multiClass(this.id)" alt="menu4">Download</a>
+		</li>
+		<li class="menu5">
+			<a href="#" id="_5" class="ghost" onclick="multiClass(this.id)" alt="menu5">Developer Team</a>
+		</li>
+		<li class="menu6">
+			<a href="#" id="_6" class="ghost" onclick="multiClass(this.id)" alt="menu6">Version</a>
+		</li>
+		<li class="menu7">
+			<a href="#" id="_7" class="ghost" onclick="multiClass(this.id)" alt="menu7">Help</a>
+		</li>
+	    </ul>
+	    <hr>
+
+	<!-- content                         -->
+	<div id="menu_0" class="on content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left> <DIV class="sectioncontent">
+              <H4 class="sectiontitle">Overview</H4>
+              <img alt="" hspace="0" src="img/index_overview.png" align="left" class="imageIndex">
+              <p>The name SUAS comes from <b>S</b>tuttgart <b>U</b>niversity <b>A</b>pplied
+                <b>S</b>cience, it sounds like [sju:as] and also similar to "<b>Show
+                Us</b>" what is one of the goals for this tool.</p>
+              <p>This Open Source SUAS MapServer is implemented using free ware
+                tools: Apache Web Server, PHP with Libriaries, MySQL database
+                and PHPMyAdmin to deliver SVG(T), PDF, SWF vector maps and PNG,
+                GIF, JPG, WBMP raster maps over the net.</p>
+              <p>The Server is based on Version 1.1.1 of the OGC Web Map Server
+                specification.</p>
+              <p>To find more information on how to use the server, please refer
+                to <a href="http://www.easywms.com" target="_blank">SUAS MapServer
+                Homepage</a>.</p>
+            </DIV>
+			</td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+	<div id="menu_1" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+		  <DIV class="sectioncontent">
+		   <H4 class="sectiontitle">Features</H4>
+		  <img alt="" hspace="0" src="img/index_feature.png" align="left" class="imageIndex">
+            <p>This server implements the following services:<br>
+            </p>
+			<ul>
+			  <li><b>WMS:</b></li>
+              <p>
+			  GetCapabilities<br>
+              GetMap<br>
+              GetFeatureInfo<br>
+              DescribeLayer<br>
+              GetLegendGraphic<br>
+			  GetStyle<br>
+			  </p>
+            </ul>
+			<ul>
+			  <li><b>WMS Extension:</b></li>
+              <p>
+			  SUAS Map Client<br>
+              Map Viewers<br>
+              2.5D Navigation<br>
+              3D Navigation<br>
+              GetThematicMap<br>
+			  </p>
+            </ul>
+            <ul>
+			<li><b>WFS:</b></li>
+              <p>GetCapabilities<br>
+              DescribeFeatureType<br>
+              GetFeature<br>
+			  GetGmlObject<br>
+			  Transaction<br>
+			  </p>
+            </ul>
+			</DIV>
+			</td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+    <!-- content                         -->
+	<div id="menu_2" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+		              <DIV class="sectioncontent">
+		  <H4 class="sectiontitle">Demo</H4>
+		  <img alt="" hspace="0" src="img/index_demo.png" align="left" class="imageIndex">
+                <a href="Demo/index.php" target="_blank"><font color="red">Locally installed demo </font>(Install SUAS
+                  MapServer firstly)</a><br><br>
+                <a href="http://suasdemo.easywms.com/Demo/" target="_blank">
+					SUAS Online Demo
+					</a> <br><br>
+                <a href="http://gis-news.de/wms/suas3_11_0401_beta1/WMS/getmapcap.php?VERSION=1.1.1&BBOX=-180%2C-90%2C180%2C90&LAYERS=LC_SR_W_10800&STYLES=default&REQUEST=GetMap&layer1=LC_SR_W_10800&style=default&SRS=EPSG%3A4326&minx=-180&miny=-90&maxx=180&maxy=90&WIDTH=800&HEIGHT=600&FORMAT=image%2Fsvg%2Bxml&EXCEPTIONS=application%2Fvnd.ogc.se_xml&transparent=True&button=GetMap" target="_blank">
+				Gis-news.de: Natural Earth Demo (>60 MB)</a><br>
+            </DIV>
+			</td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+    <!-- content                         -->
+	<div id="menu_3" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+		              <DIV class="sectioncontent">
+					  <H4 class="sectiontitle">Install</H4>
+					   <img alt="" hspace="0" src="img/index_install.png" align="left" class="imageIndex">
+                <p><a href="install/" target="_blank">Install SUAS MapServer</a></p>
+            </DIV></td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+	<div id="menu_4" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left> <DIV class="sectioncontent">
+              <H4 class="sectiontitle">Download</H4>
+			   <img alt="" hspace="0" src="img/index_download.png" align="left" class="imageIndex">
+			   <p>Download the last version from <a href="http://sourceforge.net/projects/suasmapserver" target="_blank">SourceForge</a></p>
+                <p>Download the beta version from <a href="http://www.easywms.com" target="_blank">EasyWMS</a></p>
+            </DIV></td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+	<div id="menu_5" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+		              <DIV class="sectioncontent">
+		   <H4 class="sectiontitle">Developer Team</H4>
+			  <img alt="" hspace="0" src="img/index_team.png" align="left" class="imageIndex">
+               <a href="http://www.easywms.com/" target="_blank">H. LI</a>
+                  and <a href="http://www.gis-management.de/" target="_blank">Dr.
+                  Franz J. Behr</a> for Version 3.10
+				  <br>
+                <a href="http://www.easywms.com/" target="_blank">H. LI</a>
+                  for Version 2.0&3.0
+				  <br>
+                H. CHEN for Version 2.0
+				<br>
+                Filmon Mehari and <a href="http://www.gis-management.de/" target="_blank">Dr.
+                  Franz J. Behr</a> for Version 1.0
+				  <br>
+            </DIV></td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+	<div id="menu_6" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+		              <DIV class="sectioncontent">
+					  <H4 class="sectiontitle">Version History</H4>
+			  <img alt="" hspace="0" src="img/index_history.png" align="left" class="imageIndex">
+ <ul>
+			  <li><b>V3.21.1213 beta1</b></li>
+                <p>
+				Date:2007.12.13<br>
+				Feature:<br>
+                  1. Arcinfo E00 data importing<br>
+    Fixed main bugs:<br>
+     Tons of bugs<br>
+                </p>
+							  <li><b>V3.20.0625 beta2 </b></li>
+                <p>
+				Date:2007.06.25<br>
+				Feature:<br>
+                  1.  SVG Map Viewer<br>
+                  2. SUAS MapServer Client<br>
+				  Fixed main bugs:<br>
+1, KML output index problem for points geometry<br>
+2, X3D, KML lineString geometry model building error<br>
+3, MySQL id column value can not be null<br>
+4, Attribute XML can not has single quote<br>
+                </p>
+											  <li><b>V3.20.0609 beta1</b></li>
+                <p>
+				Date:2007.06.09<br>
+				Feature:<br>
+                  1. 1,totally new interface, better user capabilities, easily to operate and understand.
+Process Bar, SRS layer notice, and new menu <br>
+                  2. X3D and KML support, you can build you 3D city map on google Earth<br>
+				  3. Data delete, new version check up<br>
+				  Fixed main bugs:<br>
+Many, cant be listed here. <br>
+                </p>
+							  <li><b>V3.12.0513 beta1</b></li>
+                <p>Date:2007.05.13<br>
+				Feature:<br>
+                  1. 3D Navigation:<br>
+                  Fixed bugs:<br>
+1, imageantialias waring when the GD version has no such function<br>
+2, in Setting step can not select table after deleting the old tables.<br>
+3, Openlayers plugin path does not work<br>
+4, The demo page can not display the 2.5D or 3D navigation interface<br>
+5, GetStyle quest rendering error<br>
+6, css error for input text<br>
+                </p>
+							  <li><b>V3.11.0429 beta4</b></li>
+                <p>
+				Date:2007.04.29<br>
+				Feature:<br>
+                  1, 2.5D Navigation<br>
+2, Mapviewer interface DIY<br>
+3, international code supporting and render text along the roads. Set define(outputTextCountry,"xx") in global.php<br>
+4,Layer's scale Denominator in SLD<br>
+
+Fixed Bugs:<br>
+1. String texts were truncated by the boundary when using Openlayers viewer to browse the map. Please open global.php and set define("OverlapRatio", 0.2) to a suitable value<br>
+2. s5.php in setting displays nothing when config the setting of SUAS<br>
+                </p>
+							  <li><b>V3.11.0415 beta3</b></li>
+                <p>
+				Date:2007.04.15<br>
+				Feature:<br>
+                  1. Log management<br>
+2. Cache and style defination file management<br>
+
+3. Empty Table function in setting<br>
+
+4. SVGZ output function, without gzip module in PHP<br>
+
+Fixed Bug:<br>
+1, Attribute information in DBF and MIF can not has single quote.<br>
+2, Error when import MIF with Text geometries<br>
+3. many other little bugs<br>
+                </p>
+				<li><b>V3.11.0407 beta2</b></li>
+                <p>
+				Date:2007.04.07<br>
+				Feature:<br>
+                  1. Cache system, that will speed up the map server more than 30%.<br>
+2. Add application/vnd.ogc.se_inimage format for GetMap's exception parameter, the error could be outputted as image, both in format of vector and raster image.
+It is a better way to handle the exceptions than using XML format, if you use a client to browse the map.<br>
+
+3. Add transparent parameter for GetMap request, now the map(only for PNG or GIF format) could easily cover the background map, for example GoogleMap.
+<br>
+4.You can choose whether Copyright will be showed with the outputted map. Open global.php and find the $showCopyright variant. Of course we hope you could set it to 1 to show our copyright. Thank you! But if you are really don't like it, set it to 0.
+<br>
+5. Using Openlayers Map client as the map viewer and integrate it in demo page.
+<br>
+Fixed Bugs:<br>
+1. in setting steps, if new layers was added, the style defination for new layers use the other layer's style.<br>
+2. in setting steps, could not read the old setting of priority, visible and queryable<br>
+3. in setting steps, could not check the permission to create new database<br>
+4.PDF and SWF file extension check for getmap, if there is no extension, throw exception.<br>
+5.Improve the exception handling system<br>
+6. When the SLD style XML file does not exist, the create metadata could not be continued<br>
+7. Fix the error output in SHP2DB function<br>
+8.Fix the style error in SVG file when no SLD style XML could be found.<br>
+9. replaced AscII values in URL query string with standard charactors.<br>
+10. Fix the bugs when inputting MIF data, if there are spaces before the coordiante in MIF file.<br>
+11. Fix mif file upload file size bug.<br>
+12. back slash in some files and wrong path in javascript files.<br>
+                </p>
+				<li><b>V3.11.0401 beta1</b></li>
+                <p>
+				Date:2007.04.01<br>
+				Feature:<br>
+                  1. MapInfo MIF DataInput<br>
+
+Fix Bugs:<br>
+1, the outputted map is displayed conversely when input SHP files as data.<br>
+2,Parameters for requests is case sentitive<br>
+3,If BBox parameter are logical wrong, for example, BBOX=0,0,-1,-1, the process goes on<br>
+4, If the geometry type is Image, the GUI has problem when create Layer Style<br>
+5, SWF and PDF render for MultiLinestring.<br>
+                </p>
+			    <li><b>V3.10.0218 beta2</b></li>
+                <p>
+				Date:2007.02.18<br>
+				Feature:<br>
+                  1, WMS:<br>
+DescribeLayer<br>
+GetLegendGraphic<br>
+GetStyles<br><br>
+
+2, WFS:<br>
+GetCapabilities<br>
+DescribeFeatureType<br>
+GetFeature<br><br>
+
+3, User can Input Shapefiles and DBF files as data source.<br>
+
+4, Style Layer Defination, User defined layer style, you could edit the style for each layer, colour, stroke, opercity, size, font and so on.<br>
+
+5, Improved the installation and configuration user capabilities.<br>
+
+6, New structure of this toolkit, it is easily to add new plugin and new featrue.<br>
+
+7, fixed hundreds of bugs, but maybe create thousands of new bugs<br>
+                </p>
+                <li><b>V3.10</b></li>
+                <p>
+				Date:2007.01<br>
+				Feature:<br>
+                  1. Change name from PHPMyWMS to SUAS MapServer<br>
+                  2. Rebuild the whole software structure, and add many new feature,
+                  WFS service,GeoPDF, MySQL spatial analysis.......<br>
+                </p>
+                <li><b>V3.0</b></li>
+                <p>
+				Date:2006.08<br>
+				Feature:<br>
+                  1. GetCapabilities<br>
+                  2. GetMap<br>
+                  3. GetFeatureInfo<br>
+                  4. SVG,SVGT,PNG,PDF,GIF,JPEG,WBMP map producing with MySQL database,
+                  without data standard limit<br>
+                  5. For PNG, SWF, PDF, GIF, JPEG and WBMP format, support Text,
+                  Circle, Ellipse, Rectangle, Line, Multi-line, Polygon, Polyline,
+                  Closepath types of Geometry<br>
+                  6. Database operation user interface, configuration with Database,
+                  Table, Field (Creating&Selecting)<br>
+                  7. Input single SVG file as data source into database<br>
+                  8. Input single CSV file as data source into database<br>
+                  9. Basic user interface for map viewing</p>
+                <li><b>V2.0</b></li>
+                <p>
+				Date:2006.02<br>
+				Feature:<br>
+                  1. GetCapabilities<br>
+                  2. GetMap<br>
+                  3. GetFeatureInfo<br>
+                  4. SVG,SVGT,PNG,PDF map producing with MySQL database<br>
+                  5. For PNG,PDF format, support Circle, Line, Multi-line types
+                  of Geometry<br>
+                  6. Limited to special standard data</p>
+                <li><b>V1.0</b></li>
+                <p>
+				Date:2005<br>
+				Feature:<br>
+                  1. GetCapabilities<br>
+                  2. GetMap<br>
+                  3. SVG map producing with MySQL database</p>
+              </ul>
+             </DIV>
+            </td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+	<div id="menu_7" class="off content">
+
+    <table summary="" class="tableContent"  cellSpacing=0 cellPadding=0 width="100%">
+      <TBODY>
+        <tr>
+          <td class="oneItem" vAlign=top align=left>
+            <DIV class="sectioncontent">
+			 <H4 class="sectiontitle">Help</H4>
+			<img alt="" hspace="0" src="img/index_help.png" align="left" class="imageIndex">
+			Online Tutorial and Help document:  <a href="http://www.easywms.com/easywms/?q=en/suas" target="_blank">SUAS MapServer</a><br>
+			Forum:  <a href="http://www.easywms.com/easywms/?q=en/forum/8" target="_blank">SUAS MapServer Forum</a>
+			</DIV></td>
+        </tr>
+      <TBODY>
+    </table>
+	</div>
+	<!-- content                         -->
+
+</div>
+
+</BODY>
+</html>

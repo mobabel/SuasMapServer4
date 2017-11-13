@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [
+]>
+<?AdobeSVGViewer save="snapshot"?>
+<svg width="100%" height="100%" viewBox="0 0 1024 768" xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink" onload="init() ">
+	<title>SVG knob</title>
+	<script type="text/ecmascript" xlink:href="../resources/helper_functions.js"/>
+	<script type="text/ecmascript" xlink:href="../resources/mapApp.js"/>
+	<script type="text/ecmascript" xlink:href="knob.js"/>
+	<script type="text/ecmascript"><![CDATA[
+		
+	//"0 0 1024 768"
+	var myMapApp = new mapApp();
+	var knob1;
+	var knob2;
+	var knob3;
+	var knob4;
+	var knob5;
+          
+			
+	function init() {
+		var indicStyles={"stroke":"black", "stroke-width":2};
+		var indicStyles2={"stroke":"white", "stroke-width":4};
+		knob1 = new knob("knob1","knob1",600,600,80,0,0,35000,320,6,245, 20,  'yellow',indicStyles,"scaleSymbol1",5, "url(#white_black)", 8,showVal, true);
+		knob2 = new knob("knob2","knob2",600,300,30,45000,45,315000,315,7,180, 10,
+		'red',indicStyles,"scaleSymbol2",10,"url(#white_black)", 6, showVal, false);
+		knob3 = new knob("knob3","knob3",200,400,25,-660,0,660,360,33,105, 10, 'green', indicStyles,"scaleSymbol",3, "url(#white_black)", 15, showVal, true);
+		knob4 = new knob("knob4","knob4",150,600,40,-1800,180,-2700,270,3,312,50,'blue',indicStyles,"scaleSymbol3",20,"url(#white_black)", 10, showVal, true);
+		knob5 = new knob("knob5","knob5",850,450,60,360,0,0,360,19,0,5,'saddlebrown',indicStyles2,"0",0,"url(#white_black)", 30, showVal, true);
+	}
+		
+		
+	function showVal(valType,groupId,value) {
+		//valType can be "change" (on mouse move or click) or "release" (mouseup or mouseout)
+		if (valType == "change") {
+			statusChange("Value of Knob '"+groupId+"' = "+Math.round(value));
+		}
+		if (valType == "release") {
+			statusChange("Knob '"+groupId+"' was released, value = "+Math.round(value));
+		}
+	}
+		
+	function reposKnob() {
+		var newcx = 300 + Math.round(Math.random() * 50);
+		var newcy = 500 + Math.round(Math.random() * 50);
+		var newr = Math.round(Math.random() * 100);
+		knob1.moveTo(newcx,newcy,newr);
+	}
+		
+	function remove() {
+		knob2.removeKnob()
+	}
+		
+		
+	
+]]></script>
+
+<!--aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-->
+
+	<defs>
+		<linearGradient id="white_black" x1="0%" y1="100%" x2="100%" y2="0%">
+			<stop offset="0%" stop-color="#000000"/>
+			<stop offset="100%" stop-color="#FFFFFF"/>
+		</linearGradient>
+		<symbol id="scaleSymbol1" overflow="visible" >
+			<polygon transform="rotate(90,0,0)" points="-3 -3 -3 3 3 0 -3 -3"/>
+		</symbol>
+
+		<symbol id="scaleSymbol2" overflow="visible">
+			<circle cx="0" cy="0" r="2" stroke="black" fill="black" pointer-events="none"/>
+		</symbol>
+		<symbol id="scaleSymbol3" overflow="visible">
+			<line x1="0" y1="-5" x2="0" y2="5" stroke="black" stroke-width="2"/>
+		</symbol>
+		
+	</defs>
+	<g id="knob1"/>
+
+	<!-- Red ellipse to remove -->
+	<text x="800" y="100">Click the red ellipse to</text>
+	<text x="800" y="120">remove the red knob!</text>
+	<ellipse rx="30" ry="15" cx="900" cy="150" fill="green" onclick="remove()"/>
+	
+	<!-- Resize and reposition the yellow knob -->
+	<text x="750" y="600">Resize and reposition the yellow knob:</text>
+	<text x="750" y="620" onclick="reposKnob()">CLICK ME!</text>
+
+	
+	<!-- Indicator symbols definition -->
+	<text x="20" y="720">Indicator symbols</text>
+	<use xlink:href="#scaleSymbol1" x="150" y="715"></use>
+	<use xlink:href="#scaleSymbol2" x="160" y="715"></use>
+	<use xlink:href="#scaleSymbol3" x="170" y="715"></use>
+	<text x="180" y="720">are placed automatically,</text>
+	<text x="20" y="738">numbers not!</text>
+
+	<text x="40" y="605">-2700</text>
+	<text x="55" y="655">-2250</text>
+	<text x="125" y="680">-1800</text>
+	
+	<!-- Statusbar -->
+	<text x="10" y="190" id="statusText">Statusbar: </text>
+
+</svg>

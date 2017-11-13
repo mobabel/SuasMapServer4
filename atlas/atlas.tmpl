@@ -1,0 +1,107 @@
+<?php
+include_once '../../../config.php';
+include_once '../../../models/setting.inc';
+include_once '../../../models/common.inc';
+
+//ob_start();
+$aid = "##AID##";
+$perm = false;
+
+//switchDatabase($dbtype);
+switch ($dbtype) {
+	case 0: {
+		include_once '../../../models/mysql.class.php';
+	}
+	break;
+	case 1: {
+		//include_once '../models/pgsql.class.php';
+	}
+	break;
+	case 2: {
+		//include_once '../models/oracle.class.php';
+	}
+	break;
+	case 3: {
+		//include_once '../models/mssql.class.php';
+	}
+	break;
+	case 4: {
+		//include_once '../models/mysqli.class.php';
+	}
+	break;
+}
+
+$database = new Database();
+$database->databaseConfig($dbserver, $dbusername, $dbpassword, $dbname, $dbprefix);
+$database->databaseConnect();
+$atlas_info = $database->db_get_atlas($aid);
+
+session_start();
+if (isset ($_SESSION['user']) ){
+	$user = $_SESSION['user'];
+	global $user;
+	
+	//if visitor is the owner
+	if($user['uid'] == $atlas_info['uid']){
+		$perm = true;
+	}else{
+		if($atlas_info['status'] == 1){
+			$perm = true;
+		}
+	}
+}else{
+	//check if the atlas status is public
+	if($atlas_info['status'] == 1){
+		$perm = true;
+	}
+}
+$database->databaseClose();
+
+if(!$perm){
+	header("Content-type: text/html;charset=utf-8");
+	echo "You have not logged in or this atlas is not public.";
+	return;
+	exit();
+}
+
+if(!empty($_GET)){
+	$handle = @fopen($baseserverhost."##SERVICE_PATH##".$_SERVER ['QUERY_STRING']."&aid=".$aid, 'r');	
+}else if(!empty($_POST)){
+	$query_string = compose_array_in_querystring($_POST);
+	$handle = @fopen($baseserverhost."##SERVICE_PATH##".$query_string."&aid=".$aid, 'r');	
+	
+}else if(!empty($_REQUEST)){
+	//at least it has [PHPSESSID] => 0156fcd1ec6cef1f637ad5da29ba647e
+	if(count($_REQUEST) <= 1){
+		echo "There is no query parameters and value.";
+		return;
+	}else{
+		$query_string = compose_array_in_querystring($_REQUEST);
+		$handle = @fopen($baseserverhost."##SERVICE_PATH##".$query_string."&aid=".$aid, 'r');	
+	}
+}
+
+if($handle){
+	foreach($http_response_header as $key=>$value){
+		header($value);
+		//$arr = explode(':', $value);
+		//$header[$arr[0]] = $arr[1];
+	}
+	
+	while (!feof($handle)){
+		$data = fgets($handle, 1024);
+		echo $data;
+	} 
+	fclose($handle); 
+}
+else{
+	foreach($http_response_header as $key=>$value){
+		echo $value."<br>\n";
+	}
+	$url = get_base_server_host()."##SERVICE_PATH##".$_SERVER ['QUERY_STRING']."&aid=".$aid;
+	echo "<a href=\"$url\">Internal error.</a>";
+}
+
+//ob_end_flush();
+
+?>

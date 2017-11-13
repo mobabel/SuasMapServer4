@@ -1,0 +1,37 @@
+<html>
+<head>
+<title>SUAS Map Client :: Open Source Map Server Client:: Delivering GIS data for the WEB</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="Keywords" content="GIS, Spatial, Spatial IT, Geographic Information System, Geoinformationssysteme, Geo-Informationssysteme, SQL, MapInfo, WMS, WFS, SVG, OGC, Web Service" />
+<meta http-equiv="Keywords" content="GIS, Spatial, Spatial IT, Geographic Information System, Geoinformationssysteme, Geo-Informationssysteme, SQL, MapInfo, WMS, WFS, SVG, OGC, Web Service" />
+<meta name="description" content="Open Source Web Map Client for Geodata"/>
+<link rel="Bookmark" href="favicon.ico"> 
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+</head>
+
+  <script language="javascript">
+    // data to transfer for the nevigation.svg
+    var urlGetmap = ""; // built url from user selection
+    var parasEpsg = "srsProblem";
+    var parasFormat = "formatProblem";
+    var parasLayers = "layersProblem";
+    var parasViewBox = "ViewBoxProblem";
+    var parasBbox = "BBoxProblem";
+    var parasWidth = 600;
+    var parasHeight = 800;
+  </script>
+  
+  <!-- a hidden frame work to transfer data from server.html to nevigation.svg
+       the reason is client side javascript does not have this capability
+       cookie can be used too, but if user turn off the cookie, then we are in big trouble 
+       The hidden frame is also served to integrate html and svg nicely for look and feel -->
+
+
+<FRAMESET name="mainframe" id="mainframe" BORDER="0" FRAMEBORDER="0" FRAMESPACING="0" COLS="20%,11,*">
+    <FRAME SRC="server.html" NAME="left_frame" scrolling="auto" TARGET="right_frame">
+    <FRAME scrolling=no noresize="true" name="toogle" marginwidth="0" marginheight="0" src="toogle.htm">
+    <FRAME SRC="initialize.html" NAME="right_frame">
+</FRAMESET><noframes></noframes>
+
+</html>
